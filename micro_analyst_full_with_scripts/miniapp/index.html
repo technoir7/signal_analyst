@@ -1,55 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Micro Analyst – OSINT Agent</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="app-container">
-    <header>
-      <h1>Micro Analyst</h1>
-      <p class="subtitle">Paste a competitor URL & get a business intelligence report.</p>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Signal-Analyst | OSINT & Business Intelligence</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-    <main>
-      <section class="input-card">
-        <div class="field">
-          <label for="companyName">Company Name (optional)</label>
-          <input id="companyName" type="text" placeholder="Blue Bottle Coffee" />
-        </div>
+  <body>
+    <div class="app">
+      <!-- Header -->
+      <header class="app-header">
+        <h1>Micro-Analyst</h1>
+        <p class="subtitle">Company OSINT & Business Intelligence Report Generator</p>
+      </header>
 
-        <div class="field">
-          <label for="companyUrl">Company URL<span class="required">*</span></label>
-          <input id="companyUrl" type="url" placeholder="https://bluebottlecoffee.com" />
-        </div>
+      <!-- Form Card -->
+      <main class="app-main">
+        <section class="card">
+          <h2>Analyze a Company</h2>
 
-        <div class="field">
-          <label for="focus">Focus (optional)</label>
-          <input id="focus" type="text" placeholder="e.g. SEO, tech stack, growth strategy" />
-        </div>
+          <form id="analyze-form">
+            <!-- Company Name -->
+            <div class="form-row">
+              <label for="company-name">Company Name (optional)</label>
+              <input
+                type="text"
+                id="company-name"
+                placeholder="Golden Gate Atelier"
+              />
+            </div>
 
-        <div class="actions">
-          <button id="analyzeBtn">Analyze</button>
-          <span id="status" class="status"></span>
-        </div>
-      </section>
+            <!-- URL -->
+            <div class="form-row">
+              <label for="company-url">Company URL</label>
+              <input
+                type="url"
+                id="company-url"
+                placeholder="https://example.com"
+                required
+              />
+            </div>
 
-      <section class="output-card">
-        <div class="output-header">
-          <h2>Report</h2>
-          <button id="toggleJsonBtn" class="secondary">Toggle raw JSON</button>
-        </div>
+            <!-- Style Presets -->
+            <div class="form-row">
+              <label for="style-preset">Report Style</label>
+              <select id="style-preset">
+                <option value="A" selected>A — Default consultant style</option>
+                <option value="B">B — OSINT analyst / tactical intelligence</option>
+                <option value="C">C — Founder-facing / product strategy</option>
+                <option value="D">D — Cold operator Formatted for C-Suite Laymen</option>
+                <option value="E">E — McKinsey/BCG-style management report</option>
+                <option value="F">F — Concise, hard-edged 2-page brief</option>
+              </select>
+            </div>
 
-        <div id="report" class="report-box">
-          <p class="placeholder">Run an analysis to see the report here.</p>
-        </div>
+            <!-- Focus -->
+            <div class="form-row">
+              <label for="focus">
+                Focus / Priorities (optional)
+                <div class="hint">
+                  e.g. “growth and SEO posture”, “technical risk”, “conversion funnel”, etc.
+                </div>
+              </label>
+              <textarea
+                id="focus"
+                rows="3"
+                placeholder="SEO posture, enrollment funnel, and competitive positioning."
+              ></textarea>
+            </div>
 
-        <pre id="rawJson" class="raw-json hidden"></pre>
-      </section>
-    </main>
-  </div>
+            <!-- Actions -->
+            <div class="form-row form-actions">
+              <button type="submit" id="analyze-button">Run Analysis</button>
+              <span id="status" class="status"></span>
+            </div>
+          </form>
+        </section>
 
-  <script src="app.js"></script>
-</body>
+        <!-- Report Card -->
+        <section class="card">
+          <div class="card-header">
+            <h2>Report</h2>
+            <button id="toggle-json" class="secondary-button">Show JSON Profile</button>
+          </div>
+
+          <div id="report-container">
+            <pre id="report-markdown" class="report"></pre>
+          </div>
+
+          <div id="json-container" class="hidden">
+            <h3>Structured OSINT Profile (JSON)</h3>
+            <pre id="json-output" class="json-output"></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
 </html>

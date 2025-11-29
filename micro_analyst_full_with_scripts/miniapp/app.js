@@ -1,95 +1,112 @@
-const API_BASE = "http://localhost:8000"; // FastAPI agent
+// miniapp/app.js
 
-const companyNameInput = document.getElementById("companyName");
-const companyUrlInput = document.getElementById("companyUrl");
-const focusInput = document.getElementById("focus");
-const analyzeBtn = document.getElementById("analyzeBtn");
-const statusEl = document.getElementById("status");
-const reportEl = document.getElementById("report");
-const rawJsonEl = document.getElementById("rawJson");
-const toggleJsonBtn = document.getElementById("toggleJsonBtn");
+const API_URL = "http://localhost:8000/analyze";
 
-let lastProfile = null;
-
-function setStatus(text) {
-  statusEl.textContent = text || "";
-}
-
-function setReport(markdown) {
-  if (!markdown) {
-    reportEl.innerHTML = '<p class="placeholder">No report generated.</p>';
-    return;
+/* Convert style code -> full descriptive label */
+function getStyleLabel(code) {
+  switch (code) {
+    case "A":
+      return "A – Default consultant style";
+    case "B":
+      return "B – OSINT analyst / tactical intelligence";
+    case "C":
+      return "C – Founder-facing / product strategy";
+    case "D":
+      return "D – Cold operator, $10k client work";
+    case "E":
+      return "E – McKinsey/BCG-style management report";
+    case "F":
+      return "F – Concise, hard-edged 2-page brief";
+    default:
+      return "A – Default consultant style";
   }
-  // Spec says we can render markdown as plain text; we'll just dump it.
-  reportEl.textContent = markdown;
 }
 
-function setRawJson(profile) {
-  if (!profile) {
-    rawJsonEl.textContent = "";
-    return;
-  }
-  rawJsonEl.textContent = JSON.stringify(profile, null, 2);
-}
+async function analyzeCompany(event) {
+  event.preventDefault();
 
-async function runAnalysis() {
-  const name = companyNameInput.value.trim() || null;
-  const url = companyUrlInput.value.trim();
-  const focus = focusInput.value.trim() || null;
+  const status = document.getElementById("status");
+  const reportEl = document.getElementById("report-markdown");
+  const jsonEl = document.getElementById("json-output");
 
-  if (!url) {
-    alert("Please enter a company URL.");
+  const companyName = document.getElementById("company-name").value.trim();
+  const companyUrl = document.getElementById("company-url").value.trim();
+  const focusRaw = document.getElementById("focus").value.trim();
+  const styleCode = document.getElementById("style-preset").value;
+
+  if (!companyUrl) {
+    status.textContent = "Please provide a company URL.";
     return;
   }
 
-  setStatus("Analyzing...");
-  analyzeBtn.disabled = true;
-  setReport("");
-  setRawJson(null);
+  const styleLabel = getStyleLabel(styleCode);
+
+  // inject the style instruction into focus
+  const combinedFocus = focusRaw
+    ? `[STYLE: ${styleLabel}] ${focusRaw}`
+    : `[STYLE: ${styleLabel}]`;
+
+  const payload = {
+    company_name: companyName || null,
+    company_url: companyUrl,
+    focus: combinedFocus
+  };
+
+  status.textContent = "Running analysis…";
+  reportEl.textContent = "";
+  jsonEl.textContent = "";
 
   try {
-    const payload = {
-      company_name: name,
-      company_url: url,
-      focus: focus,
-    };
-
-    const resp = await fetch(`${API_BASE}/analyze`, {
+    const resp = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
 
     if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+      status.textContent = `Error: ${resp.status}`;
+      reportEl.textContent = text;
+      return;
     }
 
     const data = await resp.json();
-    lastProfile = data.profile || null;
 
-    setReport(data.report_markdown || "");
-    setRawJson(lastProfile);
-    setStatus("Done.");
+    // display raw markdown for now
+    reportEl.textContent = data.report_markdown || "(no report)";
+    jsonEl.textContent = JSON.stringify(data.profile, null, 2);
+
+    status.textContent = "Analysis complete.";
   } catch (err) {
-    console.error(err);
-    setStatus("Error. See console.");
-    reportEl.innerHTML =
-      '<p class="placeholder">Error during analysis. Check console logs.</p>';
-  } finally {
-    analyzeBtn.disabled = false;
+    console.error("Request failed", err);
+    status.textContent = "Error contacting API.";
+    reportEl.textContent = String(err);
   }
 }
 
-analyzeBtn.addEventListener("click", () => {
-  runAnalysis();
-});
+/* Toggle JSON container */
+function setupJsonToggle() {
+  const toggleBtn = document.getElementById("toggle-json");
+  const jsonContainer = document.getElementById("json-container");
 
-toggleJsonBtn.addEventListener("click", () => {
-  if (rawJsonEl.classList.contains("hidden")) {
-    rawJsonEl.classList.remove("hidden");
-  } else {
-    rawJsonEl.classList.add("hidden");
-  }
-});
+  toggleBtn.addEventListener("click", () => {
+    const hidden = jsonContainer.classList.contains("hidden");
+    if (hidden) {
+      jsonContainer.classList.remove("hidden");
+      toggleBtn.textContent = "Hide JSON Profile";
+    } else {
+      jsonContainer.classList.add("hidden");
+      toggleBtn.textContent = "Show JSON Profile";
+    }
+  });
+}
+
+function main() {
+  document
+    .getElementById("analyze-form")
+    .addEventListener("submit", analyzeCompany);
+
+  setupJsonToggle();
+}
+
+document.addEventListener("DOMContentLoaded", main);
