@@ -1,0 +1,13 @@
+LLM planning step using llm_client.plan_tools():
+
+- Returns JSON with booleans:
+    use_web_scrape
+    use_seo_probe
+    use_tech_stack
+    use_reviews_snapshot
+    use_social_snapshot
+    use_careers_intel
+    use_ads_snapshot
+
+If planning LLM fails → use default:
+    web_scrape=True, seo=True, tech=True, rest=False

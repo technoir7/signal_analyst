@@ -1,0 +1,121 @@
+{
+  "profile": {
+    "company": {
+      "name": "Glossier",
+      "url": "https://www.glossier.com"
+    },
+    "web": {
+      "raw_html": null,
+      "clean_text": "Glossier is a direct-to-consumer beauty brand focused on skincare and makeup products inspired by real life.",
+      "meta": {
+        "title": "Glossier | Skincare & Beauty Products",
+        "description": "Glossier creates skincare and beauty products designed with your real life in mind.",
+        "h1": [
+          "Glossier"
+        ],
+        "h2": [
+          "Skincare",
+          "Makeup",
+          "Body"
+        ]
+      },
+      "error": null
+    },
+    "seo": {
+      "meta_issues": [],
+      "heading_issues": [],
+      "keyword_summary": [
+        {
+          "term": "skin",
+          "count": 6
+        },
+        {
+          "term": "beauty",
+          "count": 4
+        },
+        {
+          "term": "makeup",
+          "count": 3
+        }
+      ],
+      "internal_link_summary": [],
+      "error": null
+    },
+    "tech_stack": {
+      "frameworks": [
+        "React"
+      ],
+      "analytics": [
+        "Google Analytics",
+        "Segment"
+      ],
+      "cms": "Shopify",
+      "cdn": "Akamai",
+      "other": [
+        "Stripe"
+      ],
+      "error": null
+    },
+    "reviews": {
+      "sources": [
+        {
+          "source": "Direct Site Reviews",
+          "avg_rating": 4.4,
+          "review_count": 5000
+        }
+      ],
+      "summary": "Customers like Glossier's brand voice and product design, with some mixed feedback on shade range and availability in certain markets.",
+      "top_complaints": [
+        "Some customers want broader shade ranges and undertones.",
+        "Shipping times and availability can vary by region."
+      ],
+      "top_praises": [
+        "Clean, minimal packaging and strong brand aesthetic.",
+        "Products feel approachable for everyday routines.",
+        "Community-driven product development and feedback loops."
+      ],
+      "error": null
+    },
+    "social": {
+      "instagram": {
+        "handle": "@glossier",
+        "followers": 2800000
+      },
+      "youtube": {
+        "channel": "Glossier",
+        "subscribers": 150000
+      },
+      "twitter": {
+        "handle": "@glossier",
+        "followers": 300000
+      },
+      "error": null
+    },
+    "hiring": {
+      "open_roles": [
+        {
+          "title": "Senior Product Manager, E-commerce",
+          "location": "Remote"
+        },
+        {
+          "title": "Brand Designer",
+          "location": "New York, NY"
+        }
+      ],
+      "inferred_focus": "Design & Product Experience",
+      "error": null
+    },
+    "ads": {
+      "platforms": [
+        "Meta",
+        "TikTok"
+      ],
+      "themes": [
+        "New Product Launches",
+        "Hero Skincare Lines"
+      ],
+      "error": null
+    }
+  },
+  "report_markdown": "# OSINT Intelligence Report: Glossier\\n\\n- **URL:** https://www.glossier.com\\n- **Focus:** Sample demo profile for DTC beauty\\n\\n## 1. Web Presence\\n\\nGlossier's site reflects the brand\u2019s minimalist, editorial aesthetic. Metadata is clean and brand-aligned, highlighting skincare and makeup while reinforcing a \\\"real-life\\\" positioning.\\n\\n## 2. SEO Diagnostics\\n\\nKeyword presence around skincare, beauty, and makeup is strong, but there are likely opportunities in long-tail queries (e.g., skin concerns, routines, ingredients). Educational content and guides could deepen search reach while staying on-brand.\\n\\n## 3. Tech Stack Fingerprint\\n\\nThe use of React, Shopify, Segment, and a major CDN suggests a mature DTC infrastructure. This stack is optimized for experimentation, analytics, and international traffic handling.\\n\\n## 4. Customer Voice & Reviews\\n\\nCustomer reviews emphasize product experience and brand affinity. Complaints highlight demand for broader shade ranges and more reliable availability. Addressing these gaps would align with the brand\u2019s inclusive and community-based narrative.\\n\\n## 5. Social Footprint\\n\\nGlossier\u2019s social presence is a core strategic asset. Instagram and TikTok in particular support product discovery, community engagement, and user-generated content. YouTube is used for slightly longer-form storytelling and tutorials.\\n\\n## 6. Hiring & Org Signals\\n\\nRoles in e-commerce product management and brand design indicate continued investment in digital experience and brand expression. This reinforces Glossier\u2019s identity as a design-forward DTC company rather than a traditional retail-first brand.\\n\\n## 7. Ads & Growth Motions\\n\\nPaid campaigns focus on flagship product lines and new launches, often amplified by creator and community content. The combination of performance marketing and organic brand advocacy is central to growth.\\n\\n## 8. Strategic Recommendations\\n\\n1. Expand educational and ingredient-focused content to capture problem-solution search traffic.\\n2. Continue broadening shade ranges and communicate improvements transparently.\\n3. Use Segment and analytics stack to deepen personalization and retention journeys across email and on-site experiences.\\n"
+}

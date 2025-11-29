@@ -1,0 +1,129 @@
+{
+  "profile": {
+    "company": {
+      "name": "Blue Bottle Coffee",
+      "url": "https://bluebottlecoffee.com"
+    },
+    "web": {
+      "raw_html": null,
+      "clean_text": "Blue Bottle Coffee is a specialty coffee roaster and retailer focused on single-origin beans, precise brewing, and minimalist cafe experiences.",
+      "meta": {
+        "title": "Blue Bottle Coffee - Specialty Coffee Roasters",
+        "description": "Blue Bottle Coffee is a coffee roaster and retailer committed to sourcing the most delicious and sustainable coffees.",
+        "h1": [
+          "Blue Bottle Coffee"
+        ],
+        "h2": [
+          "Our Coffee",
+          "Cafes",
+          "Subscriptions"
+        ]
+      },
+      "error": null
+    },
+    "seo": {
+      "meta_issues": [],
+      "heading_issues": [],
+      "keyword_summary": [
+        {
+          "term": "coffee",
+          "count": 8
+        },
+        {
+          "term": "roaster",
+          "count": 3
+        },
+        {
+          "term": "subscription",
+          "count": 2
+        }
+      ],
+      "internal_link_summary": [],
+      "error": null
+    },
+    "tech_stack": {
+      "frameworks": [
+        "React"
+      ],
+      "analytics": [
+        "Google Analytics"
+      ],
+      "cms": "Shopify",
+      "cdn": "Cloudflare",
+      "other": [
+        "Stripe"
+      ],
+      "error": null
+    },
+    "reviews": {
+      "sources": [
+        {
+          "source": "Google",
+          "avg_rating": 4.5,
+          "review_count": 1200
+        },
+        {
+          "source": "Yelp",
+          "avg_rating": 4.0,
+          "review_count": 800
+        }
+      ],
+      "summary": "Customers consistently praise coffee quality, cafe aesthetics, and barista skill. Complaints focus on price sensitivity and crowded flagship locations.",
+      "top_complaints": [
+        "Lines can be long in popular locations.",
+        "Pricing is perceived as premium, limiting frequency of visits."
+      ],
+      "top_praises": [
+        "High and consistent coffee quality.",
+        "Minimalist, calm interior design in cafes.",
+        "Knowledgeable and friendly baristas."
+      ],
+      "error": null
+    },
+    "social": {
+      "instagram": {
+        "handle": "@bluebottle",
+        "followers": 400000
+      },
+      "youtube": {
+        "channel": "Blue Bottle Coffee",
+        "subscribers": 20000
+      },
+      "twitter": {
+        "handle": "@bluebottle",
+        "followers": 150000
+      },
+      "error": null
+    },
+    "hiring": {
+      "open_roles": [
+        {
+          "title": "Senior Software Engineer, E-commerce",
+          "location": "Remote"
+        },
+        {
+          "title": "Cafe Manager",
+          "location": "Tokyo"
+        },
+        {
+          "title": "Roastery Production Lead",
+          "location": "Oakland"
+        }
+      ],
+      "inferred_focus": "Technology & Engineering",
+      "error": null
+    },
+    "ads": {
+      "platforms": [
+        "Meta",
+        "Google"
+      ],
+      "themes": [
+        "Subscriptions",
+        "New Cafe Openings"
+      ],
+      "error": null
+    }
+  },
+  "report_markdown": "# OSINT Intelligence Report: Blue Bottle Coffee\\n\\n- **URL:** https://bluebottlecoffee.com\\n- **Focus:** Sample demo profile for specialty coffee retail\\n\\n## 1. Web Presence\\n\\nBlue Bottle's primary domain is clean, modern, and visually minimal. Metadata is present and aligned with its specialty coffee positioning. Heading structure is simple and focused on the core journeys: learning about coffee, finding cafes, and buying subscriptions.\\n\\n## 2. SEO Diagnostics\\n\\nThe site appears structurally sound from a basic SEO perspective. Titles and descriptions are well-formed, and the content emphasizes high-intent keywords such as \\\"coffee\\\", \\\"roaster\\\", and \\\"subscription\\\". There may be further opportunity to build deeper content around education (brewing guides, origin stories) to capture more discovery traffic.\\n\\n## 3. Tech Stack Fingerprint\\n\\nThe stack leans on React and Shopify, with Cloudflare in front and Stripe for payments. This is a common, robust architecture for modern DTC brands. It supports quick iteration on landing pages and a relatively standard e-commerce funnel.\\n\\n## 4. Customer Voice & Reviews\\n\\nReviews cluster around three themes:\\n\\n- Product quality is consistently praised; customers perceive Blue Bottle as a high-end, reliable coffee brand.\\n- Cafes are appreciated for aesthetics and atmosphere, which reinforce the brand as a lifestyle experience.\\n- Price and crowding surface as primary pain points, especially in flagship locations.\\n\\nStrategically, this suggests room for:\\n- Tiered offerings or bundles to address price sensitivity.\\n- Operational improvements and queue management at high-traffic stores.\\n\\n## 5. Social Footprint\\n\\nBlue Bottle runs a polished Instagram presence with strong visual storytelling around cafes and coffee rituals. Twitter/X is used more for announcements, while YouTube houses longer-form or educational content. The social strategy is coherent with the brand\u2019s minimalist and craft-focused positioning.\\n\\n## 6. Hiring & Org Signals\\n\\nOpen roles include e-commerce engineering and retail management, indicating ongoing investment in both digital channels and physical footprint. The presence of senior technical roles suggests that digital experience and e-commerce revenue remain a strategic priority.\\n\\n## 7. Ads & Growth Motions\\n\\nAds appear to emphasize subscriptions and new cafe launches. This aligns with a dual strategy of stabilizing recurring revenue (via subscriptions) and selectively expanding physical locations.\\n\\n## 8. Strategic Recommendations\\n\\n1. Expand educational and origin-based content to deepen organic discovery.\\n2. Explore mobile order-ahead and line management in crowded locations.\\n3. Develop promo structures or subscription tiers that mitigate perceived price friction.\\n4. Continue investing in e-commerce and digital experimentation as key growth levers.\\n"
+}

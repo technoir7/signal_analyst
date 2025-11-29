@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Micro Analyst – OSINT Agent</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Micro Analyst</h1>
+      <p class="subtitle">Paste a competitor URL & get a business intelligence report.</p>
+    </header>
+
+    <main>
+      <section class="input-card">
+        <div class="field">
+          <label for="companyName">Company Name (optional)</label>
+          <input id="companyName" type="text" placeholder="Blue Bottle Coffee" />
+        </div>
+
+        <div class="field">
+          <label for="companyUrl">Company URL<span class="required">*</span></label>
+          <input id="companyUrl" type="url" placeholder="https://bluebottlecoffee.com" />
+        </div>
+
+        <div class="field">
+          <label for="focus">Focus (optional)</label>
+          <input id="focus" type="text" placeholder="e.g. SEO, tech stack, growth strategy" />
+        </div>
+
+        <div class="actions">
+          <button id="analyzeBtn">Analyze</button>
+          <span id="status" class="status"></span>
+        </div>
+      </section>
+
+      <section class="output-card">
+        <div class="output-header">
+          <h2>Report</h2>
+          <button id="toggleJsonBtn" class="secondary">Toggle raw JSON</button>
+        </div>
+
+        <div id="report" class="report-box">
+          <p class="placeholder">Run an analysis to see the report here.</p>
+        </div>
+
+        <pre id="rawJson" class="raw-json hidden"></pre>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
