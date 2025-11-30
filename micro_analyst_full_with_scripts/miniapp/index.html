@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Micro-Analyst Command | OSINT Intelligence Console</title>
+    <title>Signal-Analyst | OSINT Intelligence Console</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="preconnect" href="https://rsms.me/" />
@@ -11,11 +11,16 @@
 
   <body class="app-body">
     <div class="app-shell">
-      <!-- LEFT SIDEBAR: COMMANDER NAV -->
+      <!-- LEFT SIDEBAR -->
       <aside class="sidebar">
         <div class="sidebar-logo">
-          <div class="logo-glyph">µ</div>
+          <div class="sidebar-logo-mark">µ</div>
+          <div class="sidebar-logo-text">
+            <div class="sidebar-logo-title">Micro-Analyst</div>
+            <div class="sidebar-logo-subtitle">OSINT Console</div>
+          </div>
         </div>
+
         <nav class="sidebar-nav">
           <button class="nav-icon-button nav-icon-button--active" title="OSINT Console">
             <span class="nav-dot"></span>
@@ -27,276 +32,290 @@
             <span class="nav-grid"></span>
           </button>
         </nav>
+
         <div class="sidebar-footer">
           <button
             class="nav-icon-button"
             id="open-command-palette"
-            title="Command Palette (⌘K)"
+            title="Keyboard shortcuts"
           >
-            <span class="nav-k">K</span>
+            <span class="nav-key">?</span>
           </button>
         </div>
       </aside>
 
-      <!-- MAIN GRID -->
-      <main class="main-grid">
-        <!-- TOP HEADER -->
+      <!-- MAIN PANEL -->
+      <main class="main-panel">
+        <!-- HEADER -->
         <header class="app-header">
           <div class="app-header-main">
             <div>
               <div class="label-mono">OSINT INTELLIGENCE AGENT</div>
-              <h1 class="app-title">Micro-Analyst Command</h1>
-            </div>
-            <div class="app-header-meta">
-              <span class="pill pill--accent">Commander Interface</span>
-              <span class="pill pill--outline" id="connection-pill">
-                Agent: Local / deterministic
-              </span>
+              <h1 class="app-title">Signal-Analyst</h1>
             </div>
           </div>
-          <div class="app-header-sub">
-            <p class="subtitle">
-              Feed a company surface (URL, name, intent). Watch the agent plan its tools,
-              interrogate the stack, and assemble an OSINT-grade report in real time.
-            </p>
-          </div>
+          <p class="subtitle">
+            Feed a company surface (URL, name, intent). Watch the agent plan its tools,
+            interrogate the stack, and assemble an OSINT-grade report in real time.
+          </p>
         </header>
 
-        <!-- CENTER: HERO + DATA SURFACE -->
-        <section class="center-pane">
-          <!-- INPUT + PLAN ROW -->
-          <div class="row row--inputs">
-            <!-- INPUT CARD -->
-            <section class="card card--input">
-              <header class="card-header">
-                <span class="card-label">TARGET SURFACE</span>
-                <span class="card-status badge-status badge-status--neutral" id="card-status-badge">
-                  IDLE
-                </span>
-              </header>
+        <!-- ROW 1: INPUTS + PLAN -->
+        <section class="row row--inputs">
+          <!-- INPUT CARD -->
+          <section class="card card--input">
+            <header class="card-header">
+              <span class="card-label">TARGET SURFACE</span>
+              <span class="card-status badge-status badge-status--neutral" id="card-status-badge">
+                IDLE
+              </span>
+            </header>
 
-              <form id="analyze-form" class="form-grid">
-                <div class="form-field">
-                  <label for="company_name">Company Name</label>
-                  <input
-                    id="company_name"
-                    name="company_name"
-                    type="text"
-                    placeholder="e.g. Blue Bottle Coffee"
-                    autocomplete="off"
-                  />
-                </div>
-
-                <div class="form-field">
-                  <label for="company_url">Primary URL<span class="hint"> (recommended)</span></label>
-                  <input
-                    id="company_url"
-                    name="company_url"
-                    type="url"
-                    placeholder="https://example.com"
-                    autocomplete="off"
-                  />
-                </div>
-
-                <div class="form-field">
-                  <label for="focus">Analyst Focus<span class="hint"> (optional)</span></label>
-                  <input
-                    id="focus"
-                    name="focus"
-                    type="text"
-                    placeholder="e.g. growth marketing & paid ads risk"
-                    autocomplete="off"
-                  />
-                </div>
-
-                <div class="form-field form-field--row">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="demo_mode" />
-                    <span>Demo Mode</span>
-                  </label>
-
-                  <select id="demo_dataset" class="select-field">
-                    <option value="blue_bottle">blue_bottle.json</option>
-                    <option value="sweetgreen">sweetgreen.json</option>
-                    <option value="glossier">glossier.json</option>
-                  </select>
-
-                  <button type="submit" class="primary-button" id="analyze-button">
-                    Run Analysis
-                  </button>
-                </div>
-
-                <div class="form-footnote" id="form-footnote">
-                  <span class="dot dot--idle"></span>
-                  <span id="status-text">Idle. Ready for new target.</span>
-                </div>
-              </form>
-            </section>
-
-            <!-- PLAN PREVIEW -->
-            <section class="card card--plan">
-              <header class="card-header">
-                <span class="card-label">TOOL PLAN (PREDICTED)</span>
-                <span
-                  class="card-status badge-status badge-status--neutral"
-                  id="plan-summary-badge"
-                >
-                  Waiting for input
-                </span>
-              </header>
-
-              <div class="plan-grid" id="plan-grid">
-                <!-- Filled by JS -->
-              </div>
-              <footer class="card-footer">
-                <p class="microcopy">
-                  Plan mirrors the deterministic routing rules used by the backend planning LLM
-                  client.
-                </p>
-              </footer>
-            </section>
-          </div>
-
-          <!-- DATA SURFACE ROW -->
-          <div class="row row--surface">
-            <section class="card card--surface-main">
-              <header class="card-header">
-                <span class="card-label">OSINT SURFACE SNAPSHOT</span>
-                <span
-                  class="card-status badge-status badge-status--neutral"
-                  id="surface-badge"
-                >
-                  No run yet
-                </span>
-              </header>
-
-              <div class="surface-grid">
-                <div class="surface-column">
-                  <div class="mini-metric">
-                    <div class="mini-metric-label">Web / SEO</div>
-                    <div class="mini-metric-value" id="metric-meta-issues">–</div>
-                    <div class="mini-metric-sub">Meta / heading issues</div>
-                  </div>
-
-                  <div class="mini-metric">
-                    <div class="mini-metric-label">Content Keywords</div>
-                    <div class="mini-metric-value" id="metric-keywords">–</div>
-                    <div class="mini-metric-sub">Top terms detected</div>
-                  </div>
-                </div>
-
-                <div class="surface-column">
-                  <div class="mini-metric">
-                    <div class="mini-metric-label">Tech Stack</div>
-                    <div class="mini-metric-value" id="metric-frameworks">–</div>
-                    <div class="mini-metric-sub">Frameworks & analytics</div>
-                  </div>
-
-                  <div class="mini-metric">
-                    <div class="mini-metric-label">Hiring / Ads</div>
-                    <div class="mini-metric-value" id="metric-hiring">–</div>
-                    <div class="mini-metric-sub">Roles, platforms, themes</div>
-                  </div>
-                </div>
-
-                <div class="surface-column surface-column--meta">
-                  <div class="surface-meta-block">
-                    <div class="surface-meta-label">Company</div>
-                    <div class="surface-meta-value" id="meta-company-name">—</div>
-                    <div class="surface-meta-sub" id="meta-company-url">—</div>
-                  </div>
-                  <div class="surface-meta-block">
-                    <div class="surface-meta-label">Inference</div>
-                    <div class="surface-meta-sub" id="meta-inference">
-                      Run an analysis to see how the agent reads this organization.
-                    </div>
-                  </div>
-                </div>
+            <form id="analyze-form" class="form-grid">
+              <div class="form-field">
+                <label for="company_name">Company Name</label>
+                <input
+                  id="company_name"
+                  name="company_name"
+                  type="text"
+                  placeholder="e.g. Blue Bottle Coffee"
+                  autocomplete="off"
+                />
               </div>
 
-              <section class="report-section">
-                <header class="report-header">
-                  <span class="card-label">REPORT MARKDOWN</span>
-                </header>
-                <pre id="report-output" class="report-output report-output--empty">
-No report yet. Run an analysis or load a demo profile.
-                </pre>
-              </section>
-            </section>
-          </div>
+              <div class="form-field">
+                <label for="company_url">Primary URL<span class="hint"> (recommended)</span></label>
+                <input
+                  id="company_url"
+                  name="company_url"
+                  type="url"
+                  placeholder="https://example.com"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="focus">Analyst Focus<span class="hint"> (optional)</span></label>
+                <input
+                  id="focus"
+                  name="focus"
+                  type="text"
+                  placeholder="e.g. growth marketing &amp; paid ads risk"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="report_style">Report Mode</label>
+                <select id="report_style" name="report_style" class="select-field">
+                  <option value="standard">Operator brief (default)</option>
+                  <option value="red_team">Red Team / Adversarial</option>
+                  <option value="investor_brief">Investor Brief</option>
+                  <option value="founder_playbook">Founder / Operator Playbook</option>
+                </select>
+              </div>
+
+              <div class="form-field form-field--row">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="demo_mode" />
+                  <span>Demo Mode</span>
+                </label>
+
+                <select id="demo_dataset" class="select-field">
+                  <option value="blue_bottle">blue_bottle.json</option>
+                  <option value="sweetgreen">sweetgreen.json</option>
+                  <option value="glossier">glossier.json</option>
+                </select>
+
+                <button type="submit" class="primary-button" id="analyze-button">
+                  Run Analysis
+                </button>
+              </div>
+
+              <div class="form-footnote">
+                <span class="dot dot--idle"></span>
+                <span id="status-text">Idle. Ready for new target.</span>
+              </div>
+            </form>
+          </section>
+
+          <!-- PLAN CARD -->
+          <section class="card card--plan">
+            <header class="card-header">
+              <span class="card-label">TOOL PLAN (PREDICTED)</span>
+              <span
+                class="card-status badge-status badge-status--neutral"
+                id="plan-summary-badge"
+              >
+                Waiting for input
+              </span>
+            </header>
+            <div class="plan-grid" id="plan-grid"></div>
+            <footer class="card-footer">
+              <p class="microcopy">
+                Plan mirrors the deterministic routing rules used by the backend planning client.
+              </p>
+            </footer>
+          </section>
         </section>
 
-        <!-- RIGHT PANE: AGENT MIND / COT TERMINAL -->
-        <aside class="right-pane">
-          <section class="card card--terminal">
+        <!-- ROW 2: BIG REPORT (FULL WIDTH) -->
+        <section class="row row--report">
+          <section class="card card--report">
             <header class="card-header">
-              <span class="card-label">AGENT MINDSTREAM</span>
+              <span class="card-label">SYNTHESIZED REPORT</span>
+            </header>
+            <div class="report-meta">
+              <div class="report-meta-item">
+                <span class="report-meta-label">Latency</span>
+                <span class="report-meta-value" id="latency-value">– ms</span>
+              </div>
+              <div class="report-meta-item">
+                <span class="report-meta-label">Mode</span>
+                <span class="report-meta-value" id="mode-value">DEMO</span>
+              </div>
+              <div class="report-meta-item">
+                <span class="report-meta-label">Status</span>
+                <span
+                  class="badge-status badge-status--neutral"
+                  id="report-status-badge"
+                >
+                  Ready
+                </span>
+              </div>
+            </div>
+            <article id="report-markdown" class="report-output markdown-body">
+              <p class="placeholder">
+                Run an analysis to see the OSINT report here.
+              </p>
+            </article>
+          </section>
+        </section>
+
+        <!-- ROW 3: SNAPSHOT + MCP ROUTING -->
+        <section class="row row--surface">
+          <!-- SURFACE SNAPSHOT -->
+          <section class="card card--surface">
+            <header class="card-header">
+              <span class="card-label">OSINT SURFACE SNAPSHOT</span>
+              <span
+                class="card-status badge-status badge-status--neutral"
+                id="surface-badge"
+              >
+                Waiting for input
+              </span>
+            </header>
+
+            <div class="surface-grid">
+              <div class="surface-column">
+                <div class="mini-metric">
+                  <div class="mini-metric-label">Meta / Headings</div>
+                  <div class="mini-metric-value" id="metric-meta-issues">–</div>
+                  <div class="mini-metric-sub">Issues detected</div>
+                </div>
+
+                <div class="mini-metric">
+                  <div class="mini-metric-label">Keywords</div>
+                  <div class="mini-metric-value" id="metric-keywords">–</div>
+                  <div class="mini-metric-sub">Top terms detected</div>
+                </div>
+              </div>
+
+              <div class="surface-column">
+                <div class="mini-metric">
+                  <div class="mini-metric-label">Tech Stack</div>
+                  <div class="mini-metric-value" id="metric-frameworks">–</div>
+                  <div class="mini-metric-sub">Frameworks &amp; analytics</div>
+                </div>
+
+                <div class="mini-metric">
+                  <div class="mini-metric-label">Hiring / Ads</div>
+                  <div class="mini-metric-value" id="metric-hiring">–</div>
+                  <div class="mini-metric-sub">Open roles / ad platforms</div>
+                </div>
+              </div>
+
+              <div class="surface-column surface-column--meta">
+                <div class="surface-meta-row">
+                  <div class="surface-meta-label">Company</div>
+                  <div class="surface-meta-value" id="meta-company-name">—</div>
+                </div>
+                <div class="surface-meta-row">
+                  <div class="surface-meta-label">URL</div>
+                  <div class="surface-meta-value" id="meta-company-url">—</div>
+                </div>
+                <div class="surface-meta-row surface-meta-row--inference">
+                  <div class="surface-meta-label">Inference</div>
+                  <div class="surface-meta-value surface-meta-value--wide" id="meta-inference">
+                    Surface read will appear here after a run.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- MCP ROUTING -->
+          <section class="card card--mcp">
+            <header class="card-header">
+              <span class="card-label">MCP ROUTING</span>
+            </header>
+            <div class="mcp-grid">
+              <div class="mcp-column">
+                <div class="pill pill--off" id="mcp-web">WEB SCRAPE</div>
+                <div class="pill pill--off" id="mcp-seo">SEO PROBE</div>
+                <div class="pill pill--off" id="mcp-tech">TECH STACK</div>
+              </div>
+              <div class="mcp-column">
+                <div class="pill pill--off" id="mcp-reviews">REVIEWS</div>
+                <div class="pill pill--off" id="mcp-social">SOCIAL</div>
+                <div class="pill pill--off" id="mcp-careers">HIRING</div>
+              </div>
+              <div class="mcp-column">
+                <div class="pill pill--off" id="mcp-ads">ADS</div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ROW 4: BIG CONSOLE / TRACE -->
+        <section class="row row--trace">
+          <section class="card card--trace">
+            <header class="card-header">
+              <span class="card-label">AGENT TRACE</span>
               <span
                 class="card-status badge-status badge-status--neutral"
                 id="cot-status-badge"
               >
-                Standing by
+                AWAITING INPUT
               </span>
             </header>
-
-            <div class="terminal-body" id="cot-stream">
-              <div class="terminal-line terminal-line--system">
-                <span class="terminal-tag">system</span>
-                <span>Micro-Analyst initialized. Waiting for target surface…</span>
-              </div>
-            </div>
+            <ol class="cot-stream" id="cot-stream"></ol>
           </section>
-        </aside>
-
-        <!-- BOTTOM STATUS BAR -->
-        <footer class="status-bar">
-          <div class="status-left">
-            <span class="status-label">Latency</span>
-            <span class="status-value" id="latency-value">– ms</span>
-          </div>
-          <div class="status-center">
-            <span class="status-label">MCPs</span>
-            <span class="status-pill" id="mcp-web">WEB</span>
-            <span class="status-pill" id="mcp-seo">SEO</span>
-            <span class="status-pill" id="mcp-tech">TECH</span>
-            <span class="status-pill" id="mcp-reviews">REVIEWS</span>
-            <span class="status-pill" id="mcp-social">SOCIAL</span>
-            <span class="status-pill" id="mcp-careers">HIRING</span>
-            <span class="status-pill" id="mcp-ads">ADS</span>
-          </div>
-          <div class="status-right">
-            <span class="status-label">Mode</span>
-            <span class="status-value" id="mode-value">Demo</span>
-          </div>
-        </footer>
+        </section>
       </main>
     </div>
 
-    <!-- COMMAND PALETTE (GLASS) -->
+    <!-- COMMAND PALETTE -->
     <div class="cmdk-backdrop" id="cmdk-backdrop">
       <div class="cmdk-panel">
-        <header class="cmdk-header">
-          <span class="card-label">COMMAND PALETTE</span>
-          <button class="cmdk-close" id="cmdk-close">ESC</button>
-        </header>
-        <div class="cmdk-body">
+        <div class="cmdk-header">
           <input
             id="cmdk-input"
             class="cmdk-input"
-            placeholder="Type a command… (e.g. 'Load Blue Bottle', 'Toggle Demo Mode')"
+            type="text"
+            placeholder="Type a command (e.g. 'load_blue_bottle', 'focus_growth')"
           />
-          <ul class="cmdk-list">
-            <li class="cmdk-item" data-command="load_blue_bottle">
-              Load Blue Bottle demo
-            </li>
-            <li class="cmdk-item" data-command="load_sweetgreen">
-              Load Sweetgreen demo
-            </li>
-            <li class="cmdk-item" data-command="load_glossier">
-              Load Glossier demo
-            </li>
-            <li class="cmdk-item" data-command="toggle_demo">Toggle Demo Mode</li>
-            <li class="cmdk-item" data-command="clear_report">Clear report</li>
+          <span class="cmdk-hint" id="cmdk-hint">Enter to execute · Esc to close</span>
+        </div>
+        <div class="cmdk-body">
+          <ul class="cmdk-list" id="cmdk-list">
+            <li>load_blue_bottle — Load Blue Bottle demo profile</li>
+            <li>load_sweetgreen — Load Sweetgreen demo profile</li>
+            <li>load_glossier — Load Glossier demo profile</li>
+            <li>toggle_demo — Toggle demo mode on/off</li>
+            <li>focus_growth — Focus on growth marketing &amp; paid ads risk</li>
+            <li>focus_reputation — Focus on reputation &amp; reviews</li>
+            <li>focus_hiring — Focus on hiring &amp; org structure</li>
           </ul>
         </div>
       </div>
