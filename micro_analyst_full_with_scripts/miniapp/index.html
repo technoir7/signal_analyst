@@ -2,99 +2,304 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Signal-Analyst | OSINT & Business Intelligence</title>
+    <title>Micro-Analyst Command | OSINT Intelligence Console</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://rsms.me/" />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
   </head>
 
-  <body>
-    <div class="app">
-      <!-- Header -->
-      <header class="app-header">
-        <h1>Micro-Analyst</h1>
-        <p class="subtitle">Company OSINT & Business Intelligence Report Generator</p>
-      </header>
+  <body class="app-body">
+    <div class="app-shell">
+      <!-- LEFT SIDEBAR: COMMANDER NAV -->
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-glyph">µ</div>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="nav-icon-button nav-icon-button--active" title="OSINT Console">
+            <span class="nav-dot"></span>
+          </button>
+          <button class="nav-icon-button" title="History (stub)">
+            <span class="nav-line"></span>
+          </button>
+          <button class="nav-icon-button" title="Settings (stub)">
+            <span class="nav-grid"></span>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <button
+            class="nav-icon-button"
+            id="open-command-palette"
+            title="Command Palette (⌘K)"
+          >
+            <span class="nav-k">K</span>
+          </button>
+        </div>
+      </aside>
 
-      <!-- Form Card -->
-      <main class="app-main">
-        <section class="card">
-          <h2>Analyze a Company</h2>
-
-          <form id="analyze-form">
-            <!-- Company Name -->
-            <div class="form-row">
-              <label for="company-name">Company Name (optional)</label>
-              <input
-                type="text"
-                id="company-name"
-                placeholder="Golden Gate Atelier"
-              />
+      <!-- MAIN GRID -->
+      <main class="main-grid">
+        <!-- TOP HEADER -->
+        <header class="app-header">
+          <div class="app-header-main">
+            <div>
+              <div class="label-mono">OSINT INTELLIGENCE AGENT</div>
+              <h1 class="app-title">Micro-Analyst Command</h1>
             </div>
-
-            <!-- URL -->
-            <div class="form-row">
-              <label for="company-url">Company URL</label>
-              <input
-                type="url"
-                id="company-url"
-                placeholder="https://example.com"
-                required
-              />
+            <div class="app-header-meta">
+              <span class="pill pill--accent">Commander Interface</span>
+              <span class="pill pill--outline" id="connection-pill">
+                Agent: Local / deterministic
+              </span>
             </div>
+          </div>
+          <div class="app-header-sub">
+            <p class="subtitle">
+              Feed a company surface (URL, name, intent). Watch the agent plan its tools,
+              interrogate the stack, and assemble an OSINT-grade report in real time.
+            </p>
+          </div>
+        </header>
 
-            <!-- Style Presets -->
-            <div class="form-row">
-              <label for="style-preset">Report Style</label>
-              <select id="style-preset">
-                <option value="A" selected>A — Default consultant style</option>
-                <option value="B">B — OSINT analyst / tactical intelligence</option>
-                <option value="C">C — Founder-facing / product strategy</option>
-                <option value="D">D — Cold operator Formatted for C-Suite Laymen</option>
-                <option value="E">E — McKinsey/BCG-style management report</option>
-                <option value="F">F — Concise, hard-edged 2-page brief</option>
-              </select>
-            </div>
+        <!-- CENTER: HERO + DATA SURFACE -->
+        <section class="center-pane">
+          <!-- INPUT + PLAN ROW -->
+          <div class="row row--inputs">
+            <!-- INPUT CARD -->
+            <section class="card card--input">
+              <header class="card-header">
+                <span class="card-label">TARGET SURFACE</span>
+                <span class="card-status badge-status badge-status--neutral" id="card-status-badge">
+                  IDLE
+                </span>
+              </header>
 
-            <!-- Focus -->
-            <div class="form-row">
-              <label for="focus">
-                Focus / Priorities (optional)
-                <div class="hint">
-                  e.g. “growth and SEO posture”, “technical risk”, “conversion funnel”, etc.
+              <form id="analyze-form" class="form-grid">
+                <div class="form-field">
+                  <label for="company_name">Company Name</label>
+                  <input
+                    id="company_name"
+                    name="company_name"
+                    type="text"
+                    placeholder="e.g. Blue Bottle Coffee"
+                    autocomplete="off"
+                  />
                 </div>
-              </label>
-              <textarea
-                id="focus"
-                rows="3"
-                placeholder="SEO posture, enrollment funnel, and competitive positioning."
-              ></textarea>
-            </div>
 
-            <!-- Actions -->
-            <div class="form-row form-actions">
-              <button type="submit" id="analyze-button">Run Analysis</button>
-              <span id="status" class="status"></span>
-            </div>
-          </form>
+                <div class="form-field">
+                  <label for="company_url">Primary URL<span class="hint"> (recommended)</span></label>
+                  <input
+                    id="company_url"
+                    name="company_url"
+                    type="url"
+                    placeholder="https://example.com"
+                    autocomplete="off"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="focus">Analyst Focus<span class="hint"> (optional)</span></label>
+                  <input
+                    id="focus"
+                    name="focus"
+                    type="text"
+                    placeholder="e.g. growth marketing & paid ads risk"
+                    autocomplete="off"
+                  />
+                </div>
+
+                <div class="form-field form-field--row">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="demo_mode" />
+                    <span>Demo Mode</span>
+                  </label>
+
+                  <select id="demo_dataset" class="select-field">
+                    <option value="blue_bottle">blue_bottle.json</option>
+                    <option value="sweetgreen">sweetgreen.json</option>
+                    <option value="glossier">glossier.json</option>
+                  </select>
+
+                  <button type="submit" class="primary-button" id="analyze-button">
+                    Run Analysis
+                  </button>
+                </div>
+
+                <div class="form-footnote" id="form-footnote">
+                  <span class="dot dot--idle"></span>
+                  <span id="status-text">Idle. Ready for new target.</span>
+                </div>
+              </form>
+            </section>
+
+            <!-- PLAN PREVIEW -->
+            <section class="card card--plan">
+              <header class="card-header">
+                <span class="card-label">TOOL PLAN (PREDICTED)</span>
+                <span
+                  class="card-status badge-status badge-status--neutral"
+                  id="plan-summary-badge"
+                >
+                  Waiting for input
+                </span>
+              </header>
+
+              <div class="plan-grid" id="plan-grid">
+                <!-- Filled by JS -->
+              </div>
+              <footer class="card-footer">
+                <p class="microcopy">
+                  Plan mirrors the deterministic routing rules used by the backend planning LLM
+                  client.
+                </p>
+              </footer>
+            </section>
+          </div>
+
+          <!-- DATA SURFACE ROW -->
+          <div class="row row--surface">
+            <section class="card card--surface-main">
+              <header class="card-header">
+                <span class="card-label">OSINT SURFACE SNAPSHOT</span>
+                <span
+                  class="card-status badge-status badge-status--neutral"
+                  id="surface-badge"
+                >
+                  No run yet
+                </span>
+              </header>
+
+              <div class="surface-grid">
+                <div class="surface-column">
+                  <div class="mini-metric">
+                    <div class="mini-metric-label">Web / SEO</div>
+                    <div class="mini-metric-value" id="metric-meta-issues">–</div>
+                    <div class="mini-metric-sub">Meta / heading issues</div>
+                  </div>
+
+                  <div class="mini-metric">
+                    <div class="mini-metric-label">Content Keywords</div>
+                    <div class="mini-metric-value" id="metric-keywords">–</div>
+                    <div class="mini-metric-sub">Top terms detected</div>
+                  </div>
+                </div>
+
+                <div class="surface-column">
+                  <div class="mini-metric">
+                    <div class="mini-metric-label">Tech Stack</div>
+                    <div class="mini-metric-value" id="metric-frameworks">–</div>
+                    <div class="mini-metric-sub">Frameworks & analytics</div>
+                  </div>
+
+                  <div class="mini-metric">
+                    <div class="mini-metric-label">Hiring / Ads</div>
+                    <div class="mini-metric-value" id="metric-hiring">–</div>
+                    <div class="mini-metric-sub">Roles, platforms, themes</div>
+                  </div>
+                </div>
+
+                <div class="surface-column surface-column--meta">
+                  <div class="surface-meta-block">
+                    <div class="surface-meta-label">Company</div>
+                    <div class="surface-meta-value" id="meta-company-name">—</div>
+                    <div class="surface-meta-sub" id="meta-company-url">—</div>
+                  </div>
+                  <div class="surface-meta-block">
+                    <div class="surface-meta-label">Inference</div>
+                    <div class="surface-meta-sub" id="meta-inference">
+                      Run an analysis to see how the agent reads this organization.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <section class="report-section">
+                <header class="report-header">
+                  <span class="card-label">REPORT MARKDOWN</span>
+                </header>
+                <pre id="report-output" class="report-output report-output--empty">
+No report yet. Run an analysis or load a demo profile.
+                </pre>
+              </section>
+            </section>
+          </div>
         </section>
 
-        <!-- Report Card -->
-        <section class="card">
-          <div class="card-header">
-            <h2>Report</h2>
-            <button id="toggle-json" class="secondary-button">Show JSON Profile</button>
-          </div>
+        <!-- RIGHT PANE: AGENT MIND / COT TERMINAL -->
+        <aside class="right-pane">
+          <section class="card card--terminal">
+            <header class="card-header">
+              <span class="card-label">AGENT MINDSTREAM</span>
+              <span
+                class="card-status badge-status badge-status--neutral"
+                id="cot-status-badge"
+              >
+                Standing by
+              </span>
+            </header>
 
-          <div id="report-container">
-            <pre id="report-markdown" class="report"></pre>
-          </div>
+            <div class="terminal-body" id="cot-stream">
+              <div class="terminal-line terminal-line--system">
+                <span class="terminal-tag">system</span>
+                <span>Micro-Analyst initialized. Waiting for target surface…</span>
+              </div>
+            </div>
+          </section>
+        </aside>
 
-          <div id="json-container" class="hidden">
-            <h3>Structured OSINT Profile (JSON)</h3>
-            <pre id="json-output" class="json-output"></pre>
+        <!-- BOTTOM STATUS BAR -->
+        <footer class="status-bar">
+          <div class="status-left">
+            <span class="status-label">Latency</span>
+            <span class="status-value" id="latency-value">– ms</span>
           </div>
-        </section>
+          <div class="status-center">
+            <span class="status-label">MCPs</span>
+            <span class="status-pill" id="mcp-web">WEB</span>
+            <span class="status-pill" id="mcp-seo">SEO</span>
+            <span class="status-pill" id="mcp-tech">TECH</span>
+            <span class="status-pill" id="mcp-reviews">REVIEWS</span>
+            <span class="status-pill" id="mcp-social">SOCIAL</span>
+            <span class="status-pill" id="mcp-careers">HIRING</span>
+            <span class="status-pill" id="mcp-ads">ADS</span>
+          </div>
+          <div class="status-right">
+            <span class="status-label">Mode</span>
+            <span class="status-value" id="mode-value">Demo</span>
+          </div>
+        </footer>
       </main>
+    </div>
+
+    <!-- COMMAND PALETTE (GLASS) -->
+    <div class="cmdk-backdrop" id="cmdk-backdrop">
+      <div class="cmdk-panel">
+        <header class="cmdk-header">
+          <span class="card-label">COMMAND PALETTE</span>
+          <button class="cmdk-close" id="cmdk-close">ESC</button>
+        </header>
+        <div class="cmdk-body">
+          <input
+            id="cmdk-input"
+            class="cmdk-input"
+            placeholder="Type a command… (e.g. 'Load Blue Bottle', 'Toggle Demo Mode')"
+          />
+          <ul class="cmdk-list">
+            <li class="cmdk-item" data-command="load_blue_bottle">
+              Load Blue Bottle demo
+            </li>
+            <li class="cmdk-item" data-command="load_sweetgreen">
+              Load Sweetgreen demo
+            </li>
+            <li class="cmdk-item" data-command="load_glossier">
+              Load Glossier demo
+            </li>
+            <li class="cmdk-item" data-command="toggle_demo">Toggle Demo Mode</li>
+            <li class="cmdk-item" data-command="clear_report">Clear report</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <script src="app.js"></script>
