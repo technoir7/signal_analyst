@@ -854,16 +854,20 @@ Tone rules:
             """
         elif style == "narrative":
             voice_block = """
-Write as a long-form magazine essayist (e.g. The Atlantic, California Sunday, or long-form Wired).
+Write as a senior strategy analyst writing a long-form brief for smart operators.
+Think closer to The Economist, FT Big Read, or Stratechery than a lifestyle blog.
 
-Tone & structure:
-- Smooth, continuous prose; it should feel like a feature article, not a report.
-- Begin with a narrative hook or concrete observation about how the company appears from the outside.
-- Weave OSINT signals (web surface, tech stack, reviews, hiring, ads, social) into the storytelling.
-- Treat the company as a character in a larger landscape: market, culture, or technological context.
-- Avoid bullet points; use section breaks sparingly and only as natural shifts in the story.
-- The result should read like a polished article a human editor would publish.
+Tone rules:
+- Analytical, concrete, mildly opinionated.
+- NO poetic metaphors about "tapestries", "whispers", "sanctuaries", "canvases", or similar.
+- Avoid vague praise like "vibrant community", "deep roots", "sanctuary", "timeless" unless you immediately ground it in specific observable signals.
+- Ground every claim in OSINT evidence: metadata, copy, tech stack, hiring, reviews, ads, or the absence of these signals.
+- If a signal is missing (no reviews, no social, no ads), say so plainly and analyze what that absence likely means; do NOT romanticize the silence.
+- Use smooth, continuous prose with clear paragraphs.
+- You MAY end with a short numbered list of 3–5 operator-grade recommendations; the rest of the report must be prose, not bullets.
+- Assume the reader is an experienced founder or investor; keep sentences tight, avoid filler, and do not roleplay as marketing copy.
             """
+
         elif style == "investor":
             voice_block = """
 Write as a hard-nosed private equity analyst.

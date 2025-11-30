@@ -448,17 +448,24 @@ function renderProfileAndReport(profile, markdown) {
   const tech = profile.tech_stack || {};
   const hiring = profile.hiring || {};
 
+  const meta = web.meta || {};
+  const title = (meta.title || "").trim();
+  const description = (meta.description || "").trim();
+
   const rawName = (company.name || "").trim();
   const rawUrl = (company.url || "").trim();
   const formName = (companyNameInput && companyNameInput.value.trim()) || "";
   const formUrl = (companyUrlInput && companyUrlInput.value.trim()) || "";
 
-  let effectiveName = rawName || formName || "";
-  const effectiveUrl = rawUrl || formUrl || "—";
+  // NEW: prefer explicit name, then form, then <title>, then hostname
+  let effectiveName =
+    rawName ||
+    formName ||
+    title ||
+    inferNameFromUrl(rawUrl || formUrl) ||
+    "—";
 
-  if (!effectiveName) {
-    effectiveName = inferNameFromUrl(rawUrl || formUrl) || "—";
-  }
+  const effectiveUrl = rawUrl || formUrl || "—";
 
   metaCompanyName.textContent = effectiveName || "—";
   metaCompanyUrl.textContent = effectiveUrl;
@@ -479,10 +486,6 @@ function renderProfileAndReport(profile, markdown) {
 
   // --- OSINT SURFACE SNAPSHOT (center text block) --------------------
   let snapshot = web.snapshot_summary || "";
-
-  const meta = web.meta || {};
-  const title = (meta.title || "").trim();
-  const description = (meta.description || "").trim();
 
   const errorFlags = [];
   if (seo.error) errorFlags.push("SEO");
