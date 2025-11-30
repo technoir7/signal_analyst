@@ -140,65 +140,57 @@ class LLMClient:
         focus: Optional[str],
     ) -> str:
         """
-        Deterministic report.
+        Deterministic Markdown report.
 
-        HARD OVERRIDE for debugging:
-        - If `focus` contains "narrative"/"article"/"essay", FORCE a very obviously
-          different narrative-style output so we can confirm this code path is active.
+        Tests assert the presence of:
+        - "# OSINT Intelligence Report"
+        - Headings like "Web Presence", "SEO Diagnostics", etc.
+
+        Tone / style is controlled via the `focus` string:
+
+        - If focus mentions "red team", "red-team", "opfor", "attack surface", or
+          "adversarial", the report is framed in an OPFOR / hostile auditor voice.
+
+        - If focus mentions "narrative", "article", "case study", "essay", or "story",
+          the report maintains the same headings but reads more like a human-written
+          article than a bullet list.
+
+        - Otherwise, a neutral consultant voice is used.
         """
-
-        # --- Basic fields -----------------------------------------------------
         company = profile_dict.get("company", {}) or {}
         company_name = company.get("name") or "Unknown Company"
 
-        # Fallback: if company name is missing, try web.meta.title
+        # If we still don't know the company name, try to fall back to the web meta title
         if company_name == "Unknown Company":
-            web = profile_dict.get("web") or {}
-            meta = web.get("meta") or {}
-            meta_title = meta.get("title")
-            if meta_title:
-                company_name = meta_title
+            web_meta = (profile_dict.get("web") or {}).get("meta") or {}
+            fallback_title = web_meta.get("title")
+            if fallback_title:
+                company_name = fallback_title
 
         focus_str = focus or "General OSINT & growth posture"
+
         focus_l = (focus or "").lower()
-
-        # --- HARD DEBUG SWITCH FOR NARRATIVE ---------------------------------
-        if "narrative" in focus_l or "article" in focus_l or "essay" in focus_l:
-            web = profile_dict.get("web") or {}
-            meta = web.get("meta") or {}
-            title = meta.get("title") or company_name or "an unnamed site"
-            desc = meta.get("description") or "no explicit promise in its description"
-
-            return (
-                f"OSINT DEBUG NARRATIVE REPORT: {company_name}\n\n"
-                f"_Focus: {focus_str}_\n\n"
-                "Everyone else will see a boring, sectioned report. This is the special "
-                "**narrative mode** path.\n\n"
-                f"The company presents itself at the front door with the title “{title}” and "
-                f"the promise: {desc}. From that single sentence you can already infer what "
-                "they think strangers should remember about them when every other pixel is "
-                "collapsed into a search snippet.\n\n"
-                "This block of text exists purely so you can confirm that:\n"
-                "- you are editing the correct `LLMClient.synthesize_report`, and\n"
-                "- the `focus='narrative'` path is actually being used.\n\n"
-                "Once you see THIS text in the UI, we can safely replace it with the more "
-                "serious magazine-style narrative builder.\n"
-            )
-
-        # --- Non-narrative modes: default + red-team -------------------------
         if any(
             kw in focus_l
             for kw in ["red team", "red-team", "opfor", "attack surface", "adversarial"]
         ):
-            red_team = True
+            mode = "red_team"
+        elif any(
+            kw in focus_l
+            for kw in ["narrative", "article", "case study", "essay", "story"]
+        ):
+            mode = "narrative"
         else:
-            red_team = False
+            mode = "default"
 
-        body = self._build_sectioned_report(
-            profile_dict,
-            company_name,
-            red_team=red_team,
-        )
+        if mode == "narrative":
+            body = self._build_narrative_report(profile_dict, company_name)
+        else:
+            body = self._build_sectioned_report(
+                profile_dict,
+                company_name,
+                red_team=(mode == "red_team"),
+            )
 
         return (
             f"# OSINT Intelligence Report: {company_name}\n\n"
@@ -811,11 +803,11 @@ class GeminiLLMClient(LLMClient):
     def synthesize_report(self, profile_dict: Dict[str, Any], focus: Optional[str]) -> str:
         """
         Enhanced multi-voice synthesis:
-        - standard → normal operator brief
-        - red_team → aggressive OPFOR teardown (no compliments unless weaponized)
-        - narrative → longform magazine-style prose, NOT bullet points
-        - investor_brief → punchy, metrics-forward
-        - founder_playbook → actionable strategy blueprint
+        - standard        → normal operator brief
+        - red_team        → explicit OPFOR teardown + attack plan
+        - narrative       → longform magazine-style prose, NOT bullets
+        - investor_brief  → punchy, metrics-forward
+        - founder_playbook→ actionable strategy blueprint
         """
 
         # If Gemini isn't enabled, fallback to deterministic
@@ -838,60 +830,89 @@ class GeminiLLMClient(LLMClient):
         # --- Voice-specific instructions ---
         if style == "red_team":
             voice_block = """
-Write as a hostile OPFOR analyst performing a forensic teardown.
+You are an OPFOR red-team strategist writing for another attacker.
+
+Goal:
+- Design a realistic, OSINT-grounded plan for how to break or seriously damage this company.
+
+Required structure:
+1. Start with a short "Vulnerability Overview" (2–4 sentences) summarizing why this org is structurally vulnerable.
+2. Then add a section titled "Primary Attack Paths" with a numbered list.
+   - Each item MUST:
+     * Name the vector (e.g. "Third-party stack sprawl", "Brand–reality gap in reviews", "Single-channel growth dependency").
+     * Tie it directly to specific OSINT signals from the profile (tech stack, reviews, hiring, ads, social, web surface).
+     * Explain expected impact if exploited (e.g. operational paralysis, narrative collapse, churn spike).
+3. Add a short section "Campaign Design" that explains how you would sequence these attacks over time for maximum effect.
+4. End with "Most Exploitable Asymmetry" — one paragraph on the single easiest high-leverage way to hurt them.
+
 Tone rules:
-- No praise unless used as a setup for a more damaging criticism.
-- Identify structural weaknesses, fragmentation points, operational liabilities.
-- Treat every claim the company makes as potentially deceptive.
-- Prioritize: attack surface, incompetence signals, fragility, contradiction, false narratives.
-- Produce a coherent, continuous report (not bullet points).
-        """
+- Write entirely from attacker POV: "We would exploit...", "We would start by...", "We should prioritize...".
+- No generic advice like "they should improve X". You are not helping them; you are planning against them.
+- No praise except as setup for exploitation (e.g. "Their strong brand reliance becomes a liability because...").
+- Clinical, hostile, unsentimental.
+- You MAY use numbered lists and bullets for attack paths; keep everything tightly reasoned and concrete.
+            """
         elif style == "narrative":
             voice_block = """
 Write as a long-form magazine essayist (e.g. The Atlantic, California Sunday, or long-form Wired).
-Tone rules:
-- Smooth, continuous prose.
-- No bullet points.
-- Begin with a narrative hook or observation.
-- Integrate OSINT signals into storytelling.
-- Make the company feel like a character in a larger narrative landscape.
-- The result should feel like a polished article, not a corporate report.
-        """
+
+Tone & structure:
+- Smooth, continuous prose; it should feel like a feature article, not a report.
+- Begin with a narrative hook or concrete observation about how the company appears from the outside.
+- Weave OSINT signals (web surface, tech stack, reviews, hiring, ads, social) into the storytelling.
+- Treat the company as a character in a larger landscape: market, culture, or technological context.
+- Avoid bullet points; use section breaks sparingly and only as natural shifts in the story.
+- The result should read like a polished article a human editor would publish.
+            """
         elif style == "investor":
             voice_block = """
 Write as a hard-nosed private equity analyst.
-Tone: terse, metrics-driven, unemotional, skeptical.
-Highlight market position, risk, scalability, margin threats, and execution gaps.
-Allowed to use structured headings but avoid bullets unless necessary.
-        """
+
+Tone & structure:
+- Terse, metrics-driven, skeptical.
+- Focus on: market position, unit economics proxies, scalability, margin threats, execution risk, and moats.
+- Organize with short, clearly titled sections (e.g. "Market Position", "Unit Economics Proxies", "Execution Risk").
+- You MAY use brief bullet lists for metrics or key risks, but avoid long bullet forests.
+- Default stance: "What would break if we put real money behind this, and is it worth fixing?"
+            """
         elif style == "founder":
             voice_block = """
 Write like a YC partner or elite operator reviewing a company.
-Tone: blunt, strategic, obsessed with leverage and momentum.
-Provide a clear strategic blueprint for what the operator should do next.
-Avoid bullets; use short crisp paragraphs of actionable insight.
-        """
+
+Tone & structure:
+- Blunt, strategic, leverage-focused.
+- Assume the reader is the founder; speak directly to them.
+- Provide a clear strategic blueprint for the next 90–180 days.
+- Organize as short, crisp paragraphs labeled by focus ("Positioning", "Product Surface", "Ops & Org", "Growth System").
+- Avoid bullets unless absolutely necessary; favor readable blocks of concrete, actionable guidance.
+            """
         else:
             voice_block = """
 Write a standard OSINT intelligence brief with neutral tone.
-Use short paragraphs, not bullets.
-        """
+
+Tone & structure:
+- Neutral, analytic, slightly consultant-y but not fluffy.
+- Use short paragraphs.
+- Section the report logically by surface: Web / SEO / Tech / Reviews / Social / Hiring / Ads / Strategy.
+- Bullets are allowed but keep them compact and information-dense.
+            """
 
         # --- Build prompt ---
         prompt = f"""
 {SYNTHESIS_PROMPT}
 
-You are in synthesis mode.
+You are in synthesis mode for Micro-Analyst.
 
 VOICE DIRECTIVE:
 {voice_block}
 
-Write a single, coherent report. Follow these rules:
-- MUST be in the chosen voice exactly.
-- MUST NOT output bullet points unless the mode explicitly allows them.
-- MUST integrate all OSINT fields.
-- MUST be readable as a continuous expert narrative.
-- Output ONLY the report text.
+Global rules:
+- ALWAYS stay in the chosen voice and perspective.
+- For red_team and investor modes, you MAY use numbered lists or bullets where they make the structure clearer.
+- For narrative and founder modes, strongly prefer continuous prose and avoid bullets unless explicitly justified.
+- ALWAYS ground your claims in the OSINT profile fields when possible (web, seo, tech_stack, reviews, social, hiring, ads).
+- Do NOT repeat raw JSON; interpret it.
+- Output ONLY the report text (no JSON, no explanations of your reasoning).
 
 Company OSINT profile (JSON):
 {json.dumps(profile_dict, ensure_ascii=False, indent=2)}
