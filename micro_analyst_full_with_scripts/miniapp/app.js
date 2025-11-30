@@ -243,7 +243,6 @@ function renderPlanGrid(plan) {
 }
 
 // --- DEMO PROFILES ---------------------------------------------------
-// (These are simple placeholders; adjust to match your actual demo JSONs.)
 
 const DEMO_PROFILES = {
   blue_bottle: {
@@ -432,6 +431,16 @@ function safeList(x) {
   return Array.isArray(x) ? x : [];
 }
 
+function inferNameFromUrl(url) {
+  if (!url) return "";
+  try {
+    const u = new URL(url);
+    return u.hostname || "";
+  } catch {
+    return url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  }
+}
+
 function renderProfileAndReport(profile, markdown) {
   const company = profile.company || {};
   const web = profile.web || {};
@@ -439,19 +448,111 @@ function renderProfileAndReport(profile, markdown) {
   const tech = profile.tech_stack || {};
   const hiring = profile.hiring || {};
 
-  metaCompanyName.textContent = company.name || "—";
-  metaCompanyUrl.textContent = company.url || "—";
+  const rawName = (company.name || "").trim();
+  const rawUrl = (company.url || "").trim();
+  const formName = (companyNameInput && companyNameInput.value.trim()) || "";
+  const formUrl = (companyUrlInput && companyUrlInput.value.trim()) || "";
 
-  const snapshot = web.snapshot_summary || "";
+  let effectiveName = rawName || formName || "";
+  const effectiveUrl = rawUrl || formUrl || "—";
+
+  if (!effectiveName) {
+    effectiveName = inferNameFromUrl(rawUrl || formUrl) || "—";
+  }
+
+  metaCompanyName.textContent = effectiveName || "—";
+  metaCompanyUrl.textContent = effectiveUrl;
+
+  // Counts (only if probe didn't error)
+  const metaIssuesCount =
+    safeList(seo.meta_issues).length + safeList(seo.heading_issues).length;
+  const keywordCount = safeList(seo.keyword_summary).length;
+  const frameworks = safeList(tech.frameworks);
+  const frameworksCount = frameworks.length;
+  const openRoles = safeList(hiring.open_roles);
+  const hiringCount = openRoles.length;
+
+  metricMetaIssues.textContent = seo.error ? "—" : metaIssuesCount.toString();
+  metricKeywords.textContent = seo.error ? "—" : keywordCount.toString();
+  metricFrameworks.textContent = tech.error ? "—" : frameworksCount.toString();
+  metricHiring.textContent = hiring.error ? "—" : hiringCount.toString();
+
+  // --- OSINT SURFACE SNAPSHOT (center text block) --------------------
+  let snapshot = web.snapshot_summary || "";
+
+  const meta = web.meta || {};
+  const title = (meta.title || "").trim();
+  const description = (meta.description || "").trim();
+
+  const errorFlags = [];
+  if (seo.error) errorFlags.push("SEO");
+  if (tech.error) errorFlags.push("tech stack");
+  if (hiring.error) errorFlags.push("hiring");
+
+  const hasAnyStructuredSignal =
+    (!seo.error && (metaIssuesCount > 0 || keywordCount > 0)) ||
+    (!tech.error && frameworksCount > 0) ||
+    (!hiring.error && hiringCount > 0);
+
+  if (!snapshot) {
+    if (!hasAnyStructuredSignal && errorFlags.length > 0) {
+      const who =
+        effectiveName && effectiveName !== "—"
+          ? effectiveName
+          : title || inferNameFromUrl(effectiveUrl) || "This target";
+      const descClause = description
+        ? ` presents itself as: ${description}`
+        : "";
+      snapshot = `${who}${descClause}. Only homepage metadata is visible; automated probes for ${errorFlags.join(
+        ", "
+      )} failed on this run, so treat this as a copy-only surface without structural telemetry.`;
+    } else {
+      const parts = [];
+
+      if (effectiveName && effectiveName !== "—") {
+        parts.push(effectiveName);
+      } else if (title) {
+        parts.push(title);
+      }
+
+      if (description) {
+        parts.push(description);
+      }
+
+      if (!seo.error) {
+        parts.push(`SEO issues: ${metaIssuesCount}`);
+      }
+
+      if (!tech.error) {
+        if (frameworksCount > 0) {
+          const fwPreview = frameworks.slice(0, 3).join(", ");
+          parts.push(`Frameworks: ${fwPreview}`);
+        } else {
+          parts.push("Frameworks: none fingerprinted");
+        }
+      }
+
+      if (!hiring.error) {
+        if (hiringCount > 0) {
+          const rolePreview = openRoles
+            .slice(0, 2)
+            .map((r) => r.title || "role")
+            .join(" / ");
+          parts.push(`Open roles: ${hiringCount} (${rolePreview})`);
+        } else {
+          parts.push("Open roles: 0");
+        }
+      }
+
+      snapshot = parts.join(" · ");
+    }
+  }
+
   metaInference.textContent =
     snapshot || "Surface read will appear here after a run.";
 
-  metricMetaIssues.textContent = safeList(seo.meta_issues).length.toString();
-  metricKeywords.textContent = safeList(seo.keyword_summary).length.toString();
-  metricFrameworks.textContent = safeList(tech.frameworks).length.toString();
-  metricHiring.textContent = safeList(hiring.open_roles).length.toString();
+  // --- Markdown → simple HTML for report -----------------------------
 
-  // very simple markdown → HTML
   reportMarkdown.innerHTML = "";
   const lines = markdown.split("\n");
   lines.forEach((line) => {
