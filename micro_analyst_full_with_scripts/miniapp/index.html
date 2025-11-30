@@ -159,40 +159,7 @@
           </section>
         </section>
 
-        <!-- ROW 2: BIG REPORT (FULL WIDTH) -->
-        <section class="row row--report">
-          <section class="card card--report">
-            <header class="card-header">
-              <span class="card-label">SYNTHESIZED REPORT</span>
-            </header>
-            <div class="report-meta">
-              <div class="report-meta-item">
-                <span class="report-meta-label">Latency</span>
-                <span class="report-meta-value" id="latency-value">– ms</span>
-              </div>
-              <div class="report-meta-item">
-                <span class="report-meta-label">Mode</span>
-                <span class="report-meta-value" id="mode-value">DEMO</span>
-              </div>
-              <div class="report-meta-item">
-                <span class="report-meta-label">Status</span>
-                <span
-                  class="badge-status badge-status--neutral"
-                  id="report-status-badge"
-                >
-                  Ready
-                </span>
-              </div>
-            </div>
-            <article id="report-markdown" class="report-output markdown-body">
-              <p class="placeholder">
-                Run an analysis to see the OSINT report here.
-              </p>
-            </article>
-          </section>
-        </section>
-
-        <!-- ROW 3: SNAPSHOT + MCP ROUTING -->
+        <!-- ROW 2: SNAPSHOT + MCP + TRACE (3 COLUMNS) -->
         <section class="row row--surface">
           <!-- SURFACE SNAPSHOT -->
           <section class="card card--surface">
@@ -275,10 +242,8 @@
               </div>
             </div>
           </section>
-        </section>
 
-        <!-- ROW 4: BIG CONSOLE / TRACE -->
-        <section class="row row--trace">
+          <!-- AGENT TRACE (NARROW COLUMN) -->
           <section class="card card--trace">
             <header class="card-header">
               <span class="card-label">AGENT TRACE</span>
@@ -290,6 +255,39 @@
               </span>
             </header>
             <ol class="cot-stream" id="cot-stream"></ol>
+          </section>
+        </section>
+
+        <!-- ROW 3: BIG REPORT AT THE BOTTOM -->
+        <section class="row row--report">
+          <section class="card card--report">
+            <header class="card-header">
+              <span class="card-label">SYNTHESIZED REPORT</span>
+            </header>
+            <div class="report-meta">
+              <div class="report-meta-item">
+                <span class="report-meta-label">Latency</span>
+                <span class="report-meta-value" id="latency-value">– ms</span>
+              </div>
+              <div class="report-meta-item">
+                <span class="report-meta-label">Mode</span>
+                <span class="report-meta-value" id="mode-value">DEMO</span>
+              </div>
+              <div class="report-meta-item">
+                <span class="report-meta-label">Status</span>
+                <span
+                  class="badge-status badge-status--neutral"
+                  id="report-status-badge"
+                >
+                  Ready
+                </span>
+              </div>
+            </div>
+            <article id="report-markdown" class="report-output markdown-body">
+              <p class="placeholder">
+                Run an analysis to see the OSINT report here.
+              </p>
+            </article>
           </section>
         </section>
       </main>
