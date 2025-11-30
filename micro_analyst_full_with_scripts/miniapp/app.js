@@ -1,6 +1,8 @@
-// Signal-Analyst – Frontend Logic
+// Signal-Analyst – Frontend Logic (for original Micro-Analyst layout)
 
 const API_URL = "http://localhost:8000/analyze";
+
+// --- DOM HOOKS -------------------------------------------------------
 
 const form = document.getElementById("analyze-form");
 const companyNameInput = document.getElementById("company_name");
@@ -15,23 +17,15 @@ const statusText = document.getElementById("status-text");
 const statusDot = document.querySelector(".dot");
 const cardStatusBadge = document.getElementById("card-status-badge");
 const planSummaryBadge = document.getElementById("plan-summary-badge");
-const surfaceBadge = document.getElementById("surface-badge");
-const cotStatusBadge = document.getElementById("cot-status-badge");
-
-const planGrid = document.getElementById("plan-grid");
-const reportMarkdownEl = document.getElementById("report-markdown");
-
-const metaCompanyName = document.getElementById("meta-company-name");
-const metaCompanyUrl = document.getElementById("meta-company-url");
-const metaInference = document.getElementById("meta-inference");
 
 const metricMetaIssues = document.getElementById("metric-meta-issues");
 const metricKeywords = document.getElementById("metric-keywords");
 const metricFrameworks = document.getElementById("metric-frameworks");
 const metricHiring = document.getElementById("metric-hiring");
 
-const latencyValue = document.getElementById("latency-value");
-const modeValue = document.getElementById("mode-value");
+const metaCompanyName = document.getElementById("meta-company-name");
+const metaCompanyUrl = document.getElementById("meta-company-url");
+const metaInference = document.getElementById("meta-inference");
 
 const mcpWeb = document.getElementById("mcp-web");
 const mcpSeo = document.getElementById("mcp-seo");
@@ -41,13 +35,22 @@ const mcpSocial = document.getElementById("mcp-social");
 const mcpCareers = document.getElementById("mcp-careers");
 const mcpAds = document.getElementById("mcp-ads");
 
+const cotStatusBadge = document.getElementById("cot-status-badge");
 const cotStream = document.getElementById("cot-stream");
 
-// Command palette elements
+const latencyValue = document.getElementById("latency-value");
+const modeValue = document.getElementById("mode-value");
+const reportStatusBadge = document.getElementById("report-status-badge");
+const reportMarkdown = document.getElementById("report-markdown");
+
+const planGrid = document.getElementById("plan-grid");
+
 const cmdkBackdrop = document.getElementById("cmdk-backdrop");
 const cmdkInput = document.getElementById("cmdk-input");
+const cmdkList = document.getElementById("cmdk-list");
+const openCommandPaletteBtn = document.getElementById("open-command-palette");
 
-// ---------- Status helpers ----------
+// --- STATUS HELPERS --------------------------------------------------
 
 function setStatus(state, message) {
   statusText.textContent = message;
@@ -55,26 +58,55 @@ function setStatus(state, message) {
   statusDot.classList.remove("dot--idle", "dot--running", "dot--error");
   cardStatusBadge.classList.remove(
     "badge-status--neutral",
-    "badge-status--active",
+    "badge-status--running",
     "badge-status--error"
   );
 
-  switch (state) {
-    case "running":
-      statusDot.classList.add("dot--running");
-      cardStatusBadge.classList.add("badge-status--active");
-      cardStatusBadge.textContent = "RUNNING";
-      break;
-    case "error":
-      statusDot.classList.add("dot--error");
-      cardStatusBadge.classList.add("badge-status--error");
-      cardStatusBadge.textContent = "ERROR";
-      break;
-    default:
-      statusDot.classList.add("dot--idle");
-      cardStatusBadge.classList.add("badge-status--neutral");
-      cardStatusBadge.textContent = "IDLE";
-      break;
+  if (state === "idle") {
+    statusDot.classList.add("dot--idle");
+    cardStatusBadge.classList.add("badge-status--neutral");
+  } else if (state === "running") {
+    statusDot.classList.add("dot--running");
+    cardStatusBadge.classList.add("badge-status--running");
+  } else if (state === "error") {
+    statusDot.classList.add("dot--error");
+    cardStatusBadge.classList.add("badge-status--error");
+  }
+}
+
+function setCotStatus(state, label) {
+  cotStatusBadge.classList.remove(
+    "badge-status--neutral",
+    "badge-status--running",
+    "badge-status--error"
+  );
+  if (state === "idle") {
+    cotStatusBadge.classList.add("badge-status--neutral");
+    cotStatusBadge.textContent = label || "READY";
+  } else if (state === "running") {
+    cotStatusBadge.classList.add("badge-status--running");
+    cotStatusBadge.textContent = label || "RUNNING";
+  } else if (state === "error") {
+    cotStatusBadge.classList.add("badge-status--error");
+    cotStatusBadge.textContent = label || "ERROR";
+  }
+}
+
+function setReportStatus(state, label) {
+  reportStatusBadge.classList.remove(
+    "badge-status--neutral",
+    "badge-status--running",
+    "badge-status--error"
+  );
+  if (state === "idle") {
+    reportStatusBadge.classList.add("badge-status--neutral");
+    reportStatusBadge.textContent = label || "Ready";
+  } else if (state === "running") {
+    reportStatusBadge.classList.add("badge-status--running");
+    reportStatusBadge.textContent = label || "Synthesizing";
+  } else if (state === "error") {
+    reportStatusBadge.classList.add("badge-status--error");
+    reportStatusBadge.textContent = label || "Error";
   }
 }
 
@@ -83,151 +115,39 @@ function setLoadingState(isLoading) {
   analyzeButton.textContent = isLoading ? "Running…" : "Run Analysis";
 }
 
-function setModeLabel(label) {
-  modeValue.textContent = label;
-}
+// --- COT / TRACE -----------------------------------------------------
 
-// ---------- Inline demo payloads ----------
-
-const INLINE_DEMOS = {
-  blue_bottle: {
-    profile: {
-      company: {
-        name: "Blue Bottle Coffee",
-        url: "https://bluebottlecoffee.com",
-      },
-      web: {
-        url: "https://bluebottlecoffee.com",
-        snapshot_summary:
-          "Modern, high-quality coffee roaster and cafe brand with emphasis on origin, brewing, and subscription.",
-      },
-      seo: {
-        meta_issues: [
-          "Missing meta description on several product detail pages.",
-          "Duplicate title tags on archive/collection pages.",
-        ],
-        heading_issues: ["Multiple H1s on homepage hero + featured story block."],
-        keyword_summary: [
-          "single origin",
-          "coffee subscription",
-          "pour over",
-          "espresso",
-        ],
-      },
-      tech_stack: {
-        frameworks: ["Next.js", "React"],
-        analytics: ["Google Analytics", "Segment"],
-      },
-      reviews: {
-        summary:
-          "Strong fan base with praise for coffee quality and design; complaints center around price and wait times.",
-        sources: ["Google Maps", "Yelp"],
-      },
-      social: {
-        platforms: ["Instagram", "Twitter", "Facebook"],
-      },
-      careers: {
-        open_roles: [
-          "Senior Product Manager, E-commerce",
-          "Brand Marketing Manager",
-          "Café Manager - Bay Area",
-        ],
-      },
-      ads: {
-        platforms: ["Meta", "Google", "TikTok"],
-      },
-    },
-    report_markdown: `# Business Intelligence Report: Blue Bottle Coffee
-
-## 1. Company Overview
-
-Blue Bottle is a third-wave coffee company operating a hybrid of retail cafes,
-wholesale distribution, and a global e-commerce subscription business.
-
-## 2. Web / SEO Surface
-
-- Meta issues concentrated on long-tail product pages (missing descriptions).
-- Core marketing pages are clean and structured; titles are coherent.
-
-## 3. Tech Stack & Instrumentation
-
-- Next.js + React front-end with Segment + Google Analytics instrumentation.
-
-## 4. Customer Voice & Reviews
-
-- Positive: quality, ambiance, consistency.
-- Negative: price sensitivity and perceived elitism.
-
-## 5. Org & Hiring Signals
-
-- Emphasis on e-commerce product management and brand.
-
-## 6. Growth & Ads Read
-
-- Visible activity on Meta, Google, and TikTok.
-
-## 7. Strategic Notes
-
-- High brand equity; main risk is macro price sensitivity in premium coffee.`,
-  },
-};
-
-// ---------- CoT helpers ----------
-
-function appendCotLine(kind, text) {
+function appendCotLine(role, text) {
   const li = document.createElement("li");
-  li.className = `cot-line cot-line--${kind}`;
-  li.textContent = text;
+  li.classList.add("cot-line", `cot-line--${role}`);
+  const label = document.createElement("span");
+  label.classList.add("cot-tag");
+  label.textContent = role;
+  const body = document.createElement("span");
+  body.classList.add("cot-text");
+  body.textContent = text;
+  li.appendChild(label);
+  li.appendChild(body);
   cotStream.appendChild(li);
   cotStream.scrollTop = cotStream.scrollHeight;
 }
 
 function resetCot() {
   cotStream.innerHTML = "";
+  appendCotLine("system", "Session reset. Awaiting new target surface…");
 }
 
-function setCotStatus(state) {
-  cotStatusBadge.classList.remove(
-    "badge-status--neutral",
-    "badge-status--active",
-    "badge-status--error"
-  );
+// --- PLAN PREVIEW (MIRRORS BACKEND HEURISTICS) -----------------------
 
-  switch (state) {
-    case "running":
-      cotStatusBadge.classList.add("badge-status--active");
-      cotStatusBadge.textContent = "SESSION LIVE";
-      break;
-    case "error":
-      cotStatusBadge.classList.add("badge-status--error");
-      cotStatusBadge.textContent = "SESSION ERROR";
-      break;
-    default:
-      cotStatusBadge.classList.add("badge-status--neutral");
-      cotStatusBadge.textContent = "AWAITING INPUT";
-      break;
-  }
+function containsAny(text, keywords) {
+  return keywords.some((kw) => text.includes(kw));
 }
 
-// ---------- Plan preview ----------
-
-function createPlanPreview({ hasUrl, focus, forceFullPlan }) {
-  if (!hasUrl && !forceFullPlan) {
-    return {
-      use_web_scrape: false,
-      use_seo_probe: false,
-      use_tech_stack: false,
-      use_reviews_snapshot: false,
-      use_social_snapshot: false,
-      use_careers_intel: false,
-      use_ads_snapshot: false,
-    };
-  }
-
+function createPlanPreview({ hasUrl, focus, forceFullPlan = false }) {
   const plan = {
-    use_web_scrape: true,
-    use_seo_probe: true,
-    use_tech_stack: true,
+    use_web_scrape: false,
+    use_seo_probe: false,
+    use_tech_stack: false,
     use_reviews_snapshot: false,
     use_social_snapshot: false,
     use_careers_intel: false,
@@ -236,10 +156,24 @@ function createPlanPreview({ hasUrl, focus, forceFullPlan }) {
 
   const lowerFocus = (focus || "").toLowerCase();
 
-  const containsAny = (text, phrases) => phrases.some((p) => text.includes(p));
+  if (hasUrl || forceFullPlan) {
+    plan.use_web_scrape = true;
+    plan.use_seo_probe = true;
+    plan.use_tech_stack = true;
+  }
 
-  if (containsAny(lowerFocus, ["review", "reputation", "rating", "trustpilot"])) {
+  if (
+    containsAny(lowerFocus, [
+      "review",
+      "reviews",
+      "brand",
+      "reputation",
+      "customer",
+      "voice",
+    ])
+  ) {
     plan.use_reviews_snapshot = true;
+    plan.use_social_snapshot = true;
   }
 
   if (
@@ -248,8 +182,9 @@ function createPlanPreview({ hasUrl, focus, forceFullPlan }) {
       "twitter",
       "instagram",
       "tiktok",
-      "brand",
+      "youtube",
       "community",
+      "brand",
     ])
   ) {
     plan.use_social_snapshot = true;
@@ -259,7 +194,16 @@ function createPlanPreview({ hasUrl, focus, forceFullPlan }) {
     plan.use_careers_intel = true;
   }
 
-  if (containsAny(lowerFocus, ["ads", "advertising", "campaign", "paid", "growth", "marketing"])) {
+  if (
+    containsAny(lowerFocus, [
+      "ads",
+      "advertising",
+      "campaign",
+      "paid",
+      "growth",
+      "marketing",
+    ])
+  ) {
     plan.use_ads_snapshot = true;
   }
 
@@ -278,267 +222,359 @@ function renderPlanGrid(plan) {
   ];
 
   planGrid.innerHTML = "";
+
   items.forEach(([label, key]) => {
-    const active = !!plan[key];
-    const div = document.createElement("div");
-    div.className = "plan-item" + (active ? " plan-item--active" : "");
-    div.innerHTML = `
-      <span class="plan-dot ${active ? "plan-dot--active" : ""}"></span>
-      <span class="plan-label">${label}</span>
-    `;
-    planGrid.appendChild(div);
+    const pill = document.createElement("div");
+    pill.classList.add("pill", "pill--plan");
+    if (plan[key]) pill.classList.add("pill--on");
+    pill.textContent = label;
+    planGrid.appendChild(pill);
   });
+
+  const activeLabels = items
+    .filter(([_, key]) => plan[key])
+    .map(([label]) => label);
+
+  if (!activeLabels.length) {
+    planSummaryBadge.textContent = "No tools selected yet";
+  } else {
+    planSummaryBadge.textContent = `Planned: ${activeLabels.join(" · ")}`;
+  }
 }
 
-// ---------- MCP status ----------
+// --- DEMO PROFILES ---------------------------------------------------
+// (These are simple placeholders; adjust to match your actual demo JSONs.)
 
-function resetSurfaceBadges() {
-  surfaceBadge.textContent = "Running…";
-  surfaceBadge.classList.remove("badge-status--neutral", "badge-status--error");
-  surfaceBadge.classList.add("badge-status--active");
-
-  [mcpWeb, mcpSeo, mcpTech, mcpReviews, mcpSocial, mcpCareers, mcpAds].forEach((el) => {
-    el.classList.remove("pill--on", "pill--error");
-    el.classList.add("pill--off");
-  });
-}
-
-function setMcpStatus(el, state) {
-  el.classList.remove("pill--off", "pill--on", "pill--error");
-  if (state === "on") el.classList.add("pill--on");
-  else if (state === "error") el.classList.add("pill--error");
-  else el.classList.add("pill--off");
-}
-
-// ---------- Demo loading ----------
+const DEMO_PROFILES = {
+  blue_bottle: {
+    profile: {
+      company: {
+        name: "Blue Bottle Coffee",
+        url: "https://bluebottlecoffee.com",
+      },
+      web: {
+        url: "https://bluebottlecoffee.com",
+        snapshot_summary:
+          "Modern specialty coffee brand emphasizing quality, ritual, and subscription.",
+        meta: {
+          title: "Blue Bottle Coffee",
+          description:
+            "Thoughtfully sourced, carefully roasted coffee, delivered to your home or served in our cafes.",
+          h1: ["Blue Bottle Coffee"],
+          h2: ["Our Coffee", "Subscriptions", "Cafes"],
+        },
+      },
+      seo: {
+        meta_issues: [
+          "Some collection pages with missing unique meta descriptions.",
+        ],
+        heading_issues: ["Multiple H1s detected on marketing pages."],
+        keyword_summary: [
+          "single origin coffee",
+          "coffee subscription",
+          "pour over",
+        ],
+      },
+      tech_stack: {
+        frameworks: ["Next.js", "React"],
+        analytics: ["Google Analytics", "Segment"],
+      },
+      reviews: {
+        summary:
+          "High praise for flavor and design; recurring complaints on price and wait times.",
+        top_complaints: ["Price sensitivity", "Long lines at peak hours"],
+        top_praises: ["Coffee quality", "Store ambiance"],
+      },
+      social: {},
+      hiring: {
+        inferred_focus: "Retail operations & cafe expansion",
+        open_roles: [{ title: "Cafe Manager" }, { title: "Barista" }],
+      },
+      ads: {
+        platforms: ["Meta", "Google"],
+        themes: ["subscription", "gift", "single origin"],
+      },
+    },
+    report_markdown:
+      "# OSINT Intelligence Report: Blue Bottle Coffee\n\n_Focus: Demo profile_\n\n## 1. Web Presence\n\n- Modern, minimalist landing experience with clear brand and subscription emphasis.\n\n## 2. SEO Diagnostics\n\n- Mostly solid SEO; some metadata duplication and missing descriptions.\n\n## 3. Tech Stack Fingerprint\n\n- Next.js/React with standard analytics and tracking.\n\n## 4. Customer Voice & Reviews\n\n- Strong affinity; complaints on price and lines.\n\n## 5. Social Footprint\n\n- Active visual storytelling around product and ritual.\n\n## 6. Hiring & Org Signals\n\n- Retail-heavy roles suggest focus on cafe footprint.\n\n## 7. Ads & Growth Motions\n\n- Paid spend around subscription and gifting.\n\n## 8. Strategic Recommendations\n\n- Tighten metadata on key pages and align campaigns with review language.\n",
+  },
+  sweetgreen: {
+    profile: {
+      company: {
+        name: "Sweetgreen",
+        url: "https://www.sweetgreen.com",
+      },
+      web: {
+        url: "https://www.sweetgreen.com",
+        snapshot_summary:
+          "Fast-casual salad chain foregrounding health, speed, and digital ordering.",
+        meta: {
+          title: "Sweetgreen",
+          description:
+            "Real food, freshly prepared, delivered or picked up from our restaurants.",
+          h1: ["Sweetgreen"],
+          h2: ["Our Menu", "Order", "Locations"],
+        },
+      },
+      seo: {
+        meta_issues: ["Thin location page content."],
+        heading_issues: [],
+        keyword_summary: ["salad", "healthy lunch", "delivery", "pickup"],
+      },
+      tech_stack: {
+        frameworks: ["React"],
+        analytics: ["Google Analytics"],
+      },
+      reviews: {
+        summary:
+          "Customers balance convenience and health against price and portion size.",
+      },
+      social: {},
+      hiring: {
+        inferred_focus: "Store operations & digital product",
+        open_roles: [
+          { title: "General Manager" },
+          { title: "Product Manager, Digital Ordering" },
+        ],
+      },
+      ads: {
+        platforms: ["Meta"],
+        themes: ["healthy lunch", "delivery"],
+      },
+    },
+    report_markdown:
+      "# OSINT Intelligence Report: Sweetgreen\n\n_Focus: Demo profile_\n\n## 1. Web Presence\n\n- Clean, food-centric layout optimized for ordering.\n\n## 2. SEO Diagnostics\n\n- Location pages could carry more unique content.\n\n## 3. Tech Stack Fingerprint\n\n- React-based frontend with standard analytics.\n\n## 4. Customer Voice & Reviews\n\n- Positive sentiment on convenience; pricing and portions are friction points.\n\n## 5. Social Footprint\n\n- Strong visuals around ingredients and sourcing.\n\n## 6. Hiring & Org Signals\n\n- Emphasis on in-store ops and digital product.\n\n## 7. Ads & Growth Motions\n\n- Campaigns around lunch, delivery, and healthy eating.\n\n## 8. Strategic Recommendations\n\n- Use review language more directly in paid and onsite copy.\n",
+  },
+  glossier: {
+    profile: {
+      company: {
+        name: "Glossier",
+        url: "https://www.glossier.com",
+      },
+      web: {
+        url: "https://www.glossier.com",
+        snapshot_summary:
+          "DTC beauty brand with editorial-style product pages and heavy community voice.",
+        meta: {
+          title: "Glossier",
+          description:
+            "Skincare and makeup inspired by real life. Skin first. Makeup second.",
+          h1: ["Glossier"],
+          h2: ["New", "Bestsellers", "Skincare", "Makeup"],
+        },
+      },
+      seo: {
+        meta_issues: ["Some product pages lack unique descriptions."],
+        heading_issues: [],
+        keyword_summary: ["skincare", "makeup", "glowy", "everyday"],
+      },
+      tech_stack: {
+        frameworks: ["React"],
+        analytics: ["Google Analytics", "Klaviyo"],
+      },
+      reviews: {
+        summary:
+          "High brand affinity; common complaints on shipping and product availability.",
+      },
+      social: {},
+      hiring: {
+        inferred_focus: "Omnichannel retail & marketing",
+        open_roles: [
+          { title: "Retail Associate" },
+          { title: "Growth Marketing Manager" },
+        ],
+      },
+      ads: {
+        platforms: ["Meta", "Google"],
+        themes: ["new launches", "everyday staples"],
+      },
+    },
+    report_markdown:
+      "# OSINT Intelligence Report: Glossier\n\n_Focus: Demo profile_\n\n## 1. Web Presence\n\n- Editorial storytelling and heavy emphasis on brand voice.\n\n## 2. SEO Diagnostics\n\n- Mostly strong; a few metadata gaps.\n\n## 3. Tech Stack Fingerprint\n\n- Modern DTC stack with marketing automation.\n\n## 4. Customer Voice & Reviews\n\n- Love for the brand; logistics and availability are weak points.\n\n## 5. Social Footprint\n\n- High engagement, strong UGC.\n\n## 6. Hiring & Org Signals\n\n- Investment in retail + marketing.\n\n## 7. Ads & Growth Motions\n\n- Launch-driven plus evergreen brand campaigns.\n\n## 8. Strategic Recommendations\n\n- Address recurring friction areas to protect loyalty.\n",
+  },
+};
 
 function loadDemoProfile(key) {
-  const data = INLINE_DEMOS[key] || INLINE_DEMOS.blue_bottle;
-  return Promise.resolve(data);
+  const demo = DEMO_PROFILES[key] || DEMO_PROFILES.blue_bottle;
+  // Simulate latency so the UI feels alive
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(demo), 500);
+  });
 }
 
-// ---------- Markdown rendering ----------
+// --- MCP PILL RENDERING ----------------------------------------------
 
-function renderMarkdown(text) {
-  if (!text) {
-    reportMarkdownEl.innerHTML =
-      '<p class="placeholder">No report content returned.</p>';
-    return;
-  }
+function setMcpPills(plan) {
+  const mapping = [
+    [mcpWeb, "use_web_scrape"],
+    [mcpSeo, "use_seo_probe"],
+    [mcpTech, "use_tech_stack"],
+    [mcpReviews, "use_reviews_snapshot"],
+    [mcpSocial, "use_social_snapshot"],
+    [mcpCareers, "use_careers_intel"],
+    [mcpAds, "use_ads_snapshot"],
+  ];
 
-  const lines = text.split("\n");
-  const html = [];
-  let inList = false;
-
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      if (inList) {
-        html.push("</ul>");
-        inList = false;
-      }
-      const content = line.replace(/^##\s+/, "");
-      html.push(`<h2>${content}</h2>`);
-    } else if (line.startsWith("# ")) {
-      if (inList) {
-        html.push("</ul>");
-        inList = false;
-      }
-      const content = line.replace(/^#\s+/, "");
-      html.push(`<h1>${content}</h1>`);
-    } else if (line.startsWith("- ")) {
-      if (!inList) {
-        html.push("<ul>");
-        inList = true;
-      }
-      const content = line.replace(/^-+\s+/, "");
-      html.push(`<li>${content}</li>`);
-    } else if (line.trim() === "") {
-      if (inList) {
-        html.push("</ul>");
-        inList = false;
-      }
-      html.push("<p></p>");
-    } else {
-      html.push(`<p>${line}</p>`);
+  mapping.forEach(([el, key]) => {
+    if (!el) return;
+    el.classList.remove("pill--on");
+    el.classList.add("pill--off");
+    if (plan[key]) {
+      el.classList.remove("pill--off");
+      el.classList.add("pill--on");
     }
-  }
-
-  if (inList) {
-    html.push("</ul>");
-  }
-
-  reportMarkdownEl.innerHTML = html.join("\n");
+  });
 }
 
-// ---------- CoT runner ----------
+// --- REPORT RENDERING ------------------------------------------------
 
-function runCotSequence(plan, modeLabel) {
-  resetCot();
-  setModeLabel(modeLabel.toUpperCase());
-
-  setTimeout(() => {
-    appendCotLine("system", "Session reset. Awaiting new target surface…");
-  }, 50);
-
-  setTimeout(() => {
-    appendCotLine("plan", "Mode: " + modeLabel + ". Deriving tool plan from surface…");
-  }, 350);
-
-  setTimeout(() => {
-    appendCotLine(
-      "plan",
-      "Enabled tools → " +
-        Object.keys(plan)
-          .filter((k) => plan[k])
-          .map((k) => {
-            switch (k) {
-              case "use_web_scrape":
-                return "WEB SCRAPE";
-              case "use_seo_probe":
-                return "SEO PROBE";
-              case "use_tech_stack":
-                return "TECH STACK";
-              case "use_reviews_snapshot":
-                return "REVIEWS";
-              case "use_social_snapshot":
-                return "SOCIAL";
-              case "use_careers_intel":
-                return "HIRING";
-              case "use_ads_snapshot":
-                return "ADS";
-              default:
-                return "";
-            }
-          })
-          .filter(Boolean)
-          .join(" · ")
-    );
-  }, 700);
-
-  setTimeout(() => {
-    appendCotLine(
-      "mcp",
-      "Dispatching mcp_web_scrape → primary domain (navigation, content density)."
-    );
-  }, 900);
+function safeList(x) {
+  return Array.isArray(x) ? x : [];
 }
 
-// ---------- Render profile + report ----------
-
-function renderProfileAndReport(profile, reportMarkdown) {
-  if (!profile || typeof profile !== "object") {
-    surfaceBadge.textContent = "No profile";
-    surfaceBadge.classList.add("badge-status--error");
-    return;
-  }
-
-  renderMarkdown(reportMarkdown || "");
-  reportMarkdownEl.classList.remove("report-output--empty");
-
+function renderProfileAndReport(profile, markdown) {
   const company = profile.company || {};
+  const web = profile.web || {};
+  const seo = profile.seo || {};
+  const tech = profile.tech_stack || {};
+  const hiring = profile.hiring || {};
+
   metaCompanyName.textContent = company.name || "—";
   metaCompanyUrl.textContent = company.url || "—";
 
-  const seo = profile.seo || {};
-  const metaIssues = (seo.meta_issues || []).length;
-  const headingIssues = (seo.heading_issues || []).length;
-  metricMetaIssues.textContent = metaIssues + headingIssues;
-
-  const keywordSummary = seo.keyword_summary || [];
-  metricKeywords.textContent = keywordSummary.length || "0";
-
-  const tech = profile.tech_stack || {};
-  const frameworks = tech.frameworks || [];
-  const analytics = tech.analytics || [];
-  metricFrameworks.textContent = frameworks.length + analytics.length;
-
-  const careers = profile.careers || {};
-  const openRoles = careers.open_roles || [];
-  metricHiring.textContent = openRoles.length.toString();
-
-  surfaceBadge.textContent = "Surface updated";
-  surfaceBadge.classList.remove("badge-status--neutral", "badge-status--error");
-  surfaceBadge.classList.add("badge-status--active");
-
-  if (profile.web) setMcpStatus(mcpWeb, "on");
-  if (profile.seo) setMcpStatus(mcpSeo, "on");
-  if (profile.tech_stack) setMcpStatus(mcpTech, "on");
-  if (profile.reviews) setMcpStatus(mcpReviews, "on");
-  if (profile.social) setMcpStatus(mcpSocial, "on");
-  if (profile.careers) setMcpStatus(mcpCareers, "on");
-  if (profile.ads) setMcpStatus(mcpAds, "on");
-
-  const companySummary = [
-    company.name || "Unknown company",
-    company.url || "",
-    profile.web && profile.web.snapshot_summary
-      ? profile.web.snapshot_summary
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
+  const snapshot = web.snapshot_summary || "";
   metaInference.textContent =
-    companySummary ||
-    "Surface read unavailable. Try re-running with a valid URL and/or focus.";
+    snapshot || "Surface read will appear here after a run.";
+
+  metricMetaIssues.textContent = safeList(seo.meta_issues).length.toString();
+  metricKeywords.textContent = safeList(seo.keyword_summary).length.toString();
+  metricFrameworks.textContent = safeList(tech.frameworks).length.toString();
+  metricHiring.textContent = safeList(hiring.open_roles).length.toString();
+
+  // very simple markdown → HTML
+  reportMarkdown.innerHTML = "";
+  const lines = markdown.split("\n");
+  lines.forEach((line) => {
+    if (line.startsWith("# ")) {
+      const h1 = document.createElement("h2");
+      h1.textContent = line.replace(/^#\s+/, "");
+      reportMarkdown.appendChild(h1);
+    } else if (line.startsWith("## ")) {
+      const h2 = document.createElement("h3");
+      h2.textContent = line.replace(/^##\s+/, "");
+      reportMarkdown.appendChild(h2);
+    } else if (line.startsWith("- ")) {
+      const p = document.createElement("p");
+      p.textContent = line.replace(/^-+\s*/, "• ");
+      reportMarkdown.appendChild(p);
+    } else if (line.trim().length === 0) {
+      // skip blank lines
+    } else {
+      const p = document.createElement("p");
+      p.textContent = line;
+      reportMarkdown.appendChild(p);
+    }
+  });
 }
 
-// ---------- Command palette ----------
+// --- COMMAND PALETTE -------------------------------------------------
 
-function openCmdK() {
-  cmdkBackdrop.classList.add("cmdk-backdrop--visible");
+function openCmdk() {
+  cmdkBackdrop.classList.add("cmdk-backdrop--open");
   cmdkInput.value = "";
   cmdkInput.focus();
 }
 
-function closeCmdK() {
-  cmdkBackdrop.classList.remove("cmdk-backdrop--visible");
+function closeCmdk() {
+  cmdkBackdrop.classList.remove("cmdk-backdrop--open");
 }
 
-function handleCommandSelection(cmd) {
-  switch (cmd) {
-    case "load_blue_bottle":
-      demoModeCheckbox.checked = true;
-      demoDatasetSelect.value = "blue_bottle";
-      autoRunDemo();
-      closeCmdK();
-      break;
-    case "toggle_demo":
-      demoModeCheckbox.checked = !demoModeCheckbox.checked;
-      closeCmdK();
-      break;
-    case "focus_growth":
-      focusInput.value = "growth marketing & paid ads risk";
-      closeCmdK();
-      break;
-    default:
-      closeCmdK();
+openCommandPaletteBtn.addEventListener("click", () => {
+  openCmdk();
+});
+
+cmdkBackdrop.addEventListener("click", (e) => {
+  if (e.target === cmdkBackdrop) closeCmdk();
+});
+
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    openCmdk();
+  } else if (e.key === "Escape") {
+    closeCmdk();
   }
+});
+
+cmdkInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const cmd = cmdkInput.value.trim();
+    if (cmd) {
+      applyCommand(cmd);
+    }
+  }
+});
+
+cmdkList.addEventListener("click", (e) => {
+  if (e.target.tagName === "LI") {
+    const text = e.target.textContent || "";
+    const cmd = text.split("—")[0].trim();
+    applyCommand(cmd);
+  }
+});
+
+function applyCommand(cmd) {
+  const c = cmd.toLowerCase();
+  if (c === "load_blue_bottle") {
+    demoModeCheckbox.checked = true;
+    demoDatasetSelect.value = "blue_bottle";
+    modeValue.textContent = "DEMO";
+  } else if (c === "load_sweetgreen") {
+    demoModeCheckbox.checked = true;
+    demoDatasetSelect.value = "sweetgreen";
+    modeValue.textContent = "DEMO";
+  } else if (c === "load_glossier") {
+    demoModeCheckbox.checked = true;
+    demoDatasetSelect.value = "glossier";
+    modeValue.textContent = "DEMO";
+  } else if (c === "toggle_demo") {
+    demoModeCheckbox.checked = !demoModeCheckbox.checked;
+    modeValue.textContent = demoModeCheckbox.checked ? "DEMO" : "LIVE";
+  } else if (c === "focus_growth") {
+    focusInput.value =
+      "Focus on growth funnel, paid acquisition, and where spend is likely wasted or fragile.";
+  } else if (c === "focus_reputation") {
+    focusInput.value =
+      "Focus on brand, reputation, and where customer trust is strongest or weakest.";
+  } else if (c === "focus_hiring") {
+    focusInput.value =
+      "Focus on hiring patterns and what they reveal about the real company strategy.";
+  }
+  closeCmdk();
 }
 
-function autoRunDemo() {
-  companyNameInput.value = "";
-  companyUrlInput.value = "";
-  focusInput.value = "";
-  const ev = new Event("submit", { cancelable: true });
-  form.dispatchEvent(ev);
-}
-
-// ---------- Main submit handler ----------
+// --- FORM SUBMIT / MAIN FLOW ----------------------------------------
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  resetSurfaceBadges();
 
   const companyName = companyNameInput.value.trim();
   const companyUrl = companyUrlInput.value.trim();
-  const focus = focusInput.value.trim();
-  const reportStyle =
-    reportStyleSelect && reportStyleSelect.value
-      ? reportStyleSelect.value
-      : "standard";
+  let focus = focusInput.value.trim();
+  const reportStyle = reportStyleSelect.value;
   const demoMode = demoModeCheckbox.checked;
   const demoKey = demoDatasetSelect.value;
+
+  // Enrich focus so backend can flip modes.
+  if (reportStyle === "red_team") {
+    focus =
+      (focus ? focus + " " : "") +
+      "red team opfor adversarial teardown of this company's public surface and web presence";
+  } else if (reportStyle === "narrative") {
+    focus =
+      (focus ? focus + " " : "") +
+      "narrative article case study essay-style human-readable report";
+  }
 
   const plan = createPlanPreview({
     hasUrl: !!companyUrl,
@@ -546,18 +582,50 @@ form.addEventListener("submit", async (event) => {
     forceFullPlan: demoMode,
   });
   renderPlanGrid(plan);
-
-  const modeLabel = demoMode ? "DEMO" : "LIVE";
+  setMcpPills(plan);
 
   resetCot();
-  runCotSequence(plan, modeLabel.toLowerCase());
+  appendCotLine(
+    "plan",
+    `Mode: ${demoMode ? "demo" : "live"}. Deriving tool plan from surface and focus.`
+  );
+  appendCotLine(
+    "plan",
+    "Enabled tools → " +
+      Object.entries(plan)
+        .filter(([, v]) => v)
+        .map(([k]) => {
+          switch (k) {
+            case "use_web_scrape":
+              return "WEB SCRAPE";
+            case "use_seo_probe":
+              return "SEO PROBE";
+            case "use_tech_stack":
+              return "TECH STACK";
+            case "use_reviews_snapshot":
+              return "REVIEWS";
+            case "use_social_snapshot":
+              return "SOCIAL";
+            case "use_careers_intel":
+              return "HIRING";
+            case "use_ads_snapshot":
+              return "ADS";
+            default:
+              return "";
+          }
+        })
+        .filter(Boolean)
+        .join(" · ")
+  );
 
   setStatus(
     "running",
     demoMode ? "Loading demo profile…" : "Dispatching agent API…"
   );
-  setCotStatus("running");
+  setCotStatus("running", "RUNNING");
+  setReportStatus("running", "Synthesizing");
   setLoadingState(true);
+  modeValue.textContent = demoMode ? "DEMO" : "LIVE";
 
   const startTime = performance.now();
 
@@ -566,6 +634,10 @@ form.addEventListener("submit", async (event) => {
 
     if (demoMode) {
       data = await loadDemoProfile(demoKey);
+      appendCotLine(
+        "demo",
+        `Loaded demo profile: ${data.profile.company.name} (${data.profile.company.url}).`
+      );
     } else {
       const resp = await fetch(API_URL, {
         method: "POST",
@@ -588,61 +660,32 @@ form.addEventListener("submit", async (event) => {
     latencyValue.textContent = `${elapsed} ms`;
 
     renderProfileAndReport(data.profile, data.report_markdown);
-    setStatus("idle", "Analysis complete. You can refine focus or change target.");
-    setCotStatus("idle");
-    appendCotLine("synth", "Synthesis complete. Report ready for review.");
+    setStatus("idle", "Analysis complete. Refine focus or change target.");
+    setCotStatus("idle", "READY");
+    setReportStatus("idle", "Complete");
   } catch (err) {
     console.error(err);
     setStatus(
       "error",
-      "Failure during analysis: " +
-        (err && err.message ? err.message : "Unknown error")
+      "Failure during analysis: " + (err && err.message ? err.message : "Unknown error")
     );
-    setCotStatus("error");
+    setCotStatus("error", "ERROR");
+    setReportStatus("error", "Error");
     appendCotLine(
       "error",
-      "Failure during analysis. Check console logs for more detail."
+      "Failure during analysis. Check console logs or backend trace for details."
     );
   } finally {
     setLoadingState(false);
   }
 });
 
-// ---------- Keyboard shortcuts ----------
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
-    event.preventDefault();
-    openCmdK();
-  } else if (event.key === "Escape") {
-    closeCmdK();
-  }
-});
-
-cmdkBackdrop.addEventListener("click", (event) => {
-  if (event.target === cmdkBackdrop) {
-    closeCmdK();
-  }
-});
-
-cmdkInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    const value = (cmdkInput.value || "").trim();
-    if (!value) {
-      closeCmdK();
-      return;
-    }
-    handleCommandSelection(value.toLowerCase());
-  } else if (event.key === "Escape") {
-    closeCmdK();
-  }
-});
-
-// ---------- Initial UI ----------
+// --- INITIALIZATION --------------------------------------------------
 
 (function init() {
   demoModeCheckbox.checked = true;
+  modeValue.textContent = "DEMO";
+  latencyValue.textContent = "– ms";
 
   const initialPlan = createPlanPreview({
     hasUrl: false,
@@ -650,6 +693,9 @@ cmdkInput.addEventListener("keydown", (event) => {
     forceFullPlan: true,
   });
   renderPlanGrid(initialPlan);
-
-  latencyValue.textContent = "– ms";
+  setMcpPills(initialPlan);
+  resetCot();
+  setStatus("idle", "Idle. Ready for new target.");
+  setCotStatus("idle", "AWAITING INPUT");
+  setReportStatus("idle", "Ready");
 })();
