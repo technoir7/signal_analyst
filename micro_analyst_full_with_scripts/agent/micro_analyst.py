@@ -19,6 +19,7 @@ from core.merge_profiles import (
     merge_ads_data,
 )
 from utils.llm_client import LLMClient, get_llm_client
+from agent.web_surfaces import fetch_web_surfaces, aggregate_web_surfaces
 
 # ---------------------------------------------------------------------------
 # Load environment from project-level .env
@@ -134,9 +135,13 @@ def analyze(req: AnalyzeRequest) -> Dict[str, Any]:
     # 2) Planning step: decide which MCPs to call
     try:
         plan = llm_client.plan_tools(
-            req.company_name,
-            req.company_url,
-            req.focus,
+            {
+                "company_name": req.company_name,
+                "company_url": req.company_url,
+                "focus": req.focus,
+            },
+            MCP_URLS,
+            focus=req.focus,  # <-- pass focus to satisfy new signature
         )
         if not isinstance(plan, dict):
             raise TypeError("plan_tools returned non-dict")
@@ -145,21 +150,67 @@ def analyze(req: AnalyzeRequest) -> Dict[str, Any]:
         plan = DEFAULT_TOOL_PLAN.copy()
 
     # 3) Execute MCPs according to plan
-    # --- Web scrape -----------------------------------------------------------
+
+    # --- Web scrape (Tier-1 multi-surface) -----------------------------------
     if plan.get("use_web_scrape"):
-        web_payload = {"url": req.company_url}
-        web_result = _post_json(MCP_WEB_SCRAPE_URL, web_payload)
+        surfaces = fetch_web_surfaces(
+            company_url=req.company_url,
+            web_scrape_endpoint=MCP_WEB_SCRAPE_URL,
+            post_json_fn=_post_json,
+        )
+        logger.info("Web surfaces scraped: %d", len(surfaces))
+        web_result = aggregate_web_surfaces(req.company_url, surfaces)
+        # web_result is a dict with raw_html / clean_text / meta / error
         profile = merge_web_data(profile, web_result)
+
+    # For convenience, pull out the web text + meta we just merged
+    web_text = ""
+    web_meta: Dict[str, Any] = {
+        "title": None,
+        "description": None,
+        "h1": [],
+        "h2": [],
+    }
+
+    try:
+        # Depending on your CompanyOSINTProfile / WebData model
+        web = getattr(profile, "web", None)
+        if web is not None:
+            web_text = getattr(web, "clean_text", "") or ""
+            meta_obj = getattr(web, "meta", None)
+            if meta_obj is not None:
+                web_meta = {
+                    "title": getattr(meta_obj, "title", None),
+                    "description": getattr(meta_obj, "description", None),
+                    "h1": getattr(meta_obj, "h1", []) or [],
+                    "h2": getattr(meta_obj, "h2", []) or [],
+                }
+    except Exception as e:
+        logger.error(f"Error extracting web text/meta from profile: {e}")
+
+    logger.info(
+        "Web surface summary: text_len=%d, title=%r",
+        len(web_text or ""),
+        web_meta.get("title"),
+    )
 
     # --- SEO probe ------------------------------------------------------------
     if plan.get("use_seo_probe"):
-        seo_payload = {"url": req.company_url}
+        seo_payload: Dict[str, Any] = {
+            "url": req.company_url,
+            "text": web_text,
+            "meta": web_meta,
+        }
         seo_result = _post_json(MCP_SEO_PROBE_URL, seo_payload)
         profile = merge_seo_data(profile, seo_result)
 
     # --- Tech stack -----------------------------------------------------------
     if plan.get("use_tech_stack"):
-        tech_payload = {"url": req.company_url}
+        # If you want, you can also pass raw_html; for now we just send text + URL
+        tech_payload: Dict[str, Any] = {
+            "url": req.company_url,
+            "text": web_text,
+        }
         tech_result = _post_json(MCP_TECH_STACK_URL, tech_payload)
         profile = merge_tech_stack_data(profile, tech_result)
 
@@ -181,7 +232,7 @@ def analyze(req: AnalyzeRequest) -> Dict[str, Any]:
         careers_result = _post_json(MCP_CAREERS_INTEL_URL, careers_payload)
         profile = merge_hiring_data(profile, careers_result)
 
-    # --- Ads snapshot --------------------------------------------------------
+    # --- Ads snapshot ---------------------------------------------------------
     if plan.get("use_ads_snapshot"):
         ads_payload = {"url": req.company_url}
         ads_result = _post_json(MCP_ADS_SNAPSHOT_URL, ads_payload)
