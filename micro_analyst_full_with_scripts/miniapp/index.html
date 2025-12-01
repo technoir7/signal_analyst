@@ -109,7 +109,7 @@
                 <label for="report_style">Report Mode</label>
                 <select id="report_style" name="report_style" class="select-field">
                   <option value="standard">Operator brief (default)</option>
-                  <option value="red_team">Red Team / Adversarial</option>
+                  <!-- <option value="red_team">Red Team / Adversarial</option> -->
                   <!-- NEW: narrative mode -->
                   <option value="narrative">Narrative report (article-style)</option>
                   <!-- existing -->
@@ -145,29 +145,29 @@
           <!-- PLAN CARD -->
           <section class="card card--plan" id="tool-pipeline-card">
             <header class="card-header">
-              <h2>Tool Execution Pipeline</h2>
+              <h4>Tool Execution Pipeline</h4>
               <p class="card-subtitle">Deterministic OSINT workflow</p>
             </header>
 
-            <div class="pipeline">
+            <div class="pipeline pipeline--idle" id="pipeline">
               <div class="pipeline-track">
                 <div class="pipeline-progress" id="pipeline-progress"></div>
               </div>
 
               <div class="pipeline-steps">
-                <div class="pipeline-step" data-step="scrape">
+                <div class="pipeline-step pending" data-step="scrape">
                   <span class="step-dot"></span>
                   <span class="step-label">Surface scrape</span>
                 </div>
-                <div class="pipeline-step" data-step="seo">
+                <div class="pipeline-step pending" data-step="seo">
                   <span class="step-dot"></span>
                   <span class="step-label">SEO probe</span>
                 </div>
-                <div class="pipeline-step" data-step="tech">
+                <div class="pipeline-step pending" data-step="tech">
                   <span class="step-dot"></span>
                   <span class="step-label">Tech stack</span>
                 </div>
-                <div class="pipeline-step" data-step="synthesis">
+                <div class="pipeline-step pending" data-step="synthesis">
                   <span class="step-dot"></span>
                   <span class="step-label">Report synthesis</span>
                 </div>
@@ -186,12 +186,12 @@
           <!-- SURFACE SNAPSHOT -->
           <section class="card card--surface" id="osint-surface-card">
             <header class="card-header">
-              <h2>Live agent activity monitor</h2>
+              <h3>Live agent activity monitor</h3>
               <!-- <h2>OSINT Surface Snapshot</h2> -->
               <!-- <p class="card-subtitle">Live agent activity monitor</p> -->
             </header>
 
-            <div id="agent-pulse" class="agent-pulse">
+            <div id="agent-pulse" class="agent-pulse idle">
               <div class="pulse-ring outer"></div>
               <div class="pulse-ring inner"></div>
               <div class="pulse-core"></div>

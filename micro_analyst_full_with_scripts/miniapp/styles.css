@@ -699,7 +699,7 @@ body.app-body {
   padding: 4px 2px;
 }
 
-/* --- AGENT PULSE --------------------------------------------------- */
+/* --- AGENT PULSE (VERY HIGH-MOTION VERSION) ------------------------ */
 
 .agent-pulse {
   position: relative;
@@ -711,28 +711,51 @@ body.app-body {
 }
 
 .pulse-core {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   background: radial-gradient(circle at 30% 30%, #4ade80, #16a34a);
-  box-shadow: 0 0 18px rgba(34, 197, 94, 0.7);
+  position: relative;
+  overflow: visible;
+}
+
+/* Neuronal flicker layer */
+.pulse-core::before {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: inherit;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Outer halo */
+.pulse-core::after {
+  content: "";
+  position: absolute;
+  inset: -38%;
+  border-radius: inherit;
+  border: 1px solid rgba(74, 222, 128, 0.5);
+  opacity: 0.4;
 }
 
 .pulse-ring {
   position: absolute;
   border-radius: 999px;
-  border: 2px solid rgba(34, 197, 94, 0.35);
+  border: 2px solid rgba(74, 222, 128, 0.5);
   opacity: 0;
+  pointer-events: none;
 }
 
 .pulse-ring.outer {
-  width: 72px;
-  height: 72px;
+  width: 86px;
+  height: 86px;
 }
 
 .pulse-ring.inner {
-  width: 48px;
-  height: 48px;
+  width: 58px;
+  height: 58px;
 }
 
 .agent-pulse-label {
@@ -741,56 +764,201 @@ body.app-body {
   text-align: center;
 }
 
-/* idle vs active states */
+/* IDLE: very calm, almost off */
 
 .agent-pulse.idle .pulse-core {
-  box-shadow: 0 0 10px rgba(148, 163, 184, 0.6);
-  background: radial-gradient(circle at 30% 30%, #e5e7eb, #9ca3af);
+  background: radial-gradient(circle at 30% 30%, #dbe0e8, #9ca3af);
+  box-shadow: 0 0 6px rgba(148, 163, 184, 0.5);
 }
 
-.agent-pulse.active .pulse-ring {
-  animation: pulse-expand 1.6s ease-out infinite;
+.agent-pulse.idle .pulse-core::before,
+.agent-pulse.idle .pulse-core::after,
+.agent-pulse.idle .pulse-ring {
+  animation: none;
+  opacity: 0;
+}
+
+/* ACTIVE: aggressive breathing, overlapping rings, hard flicker */
+
+.agent-pulse.active .pulse-core {
+  animation:
+    core-breathe 1.0s ease-in-out infinite,
+    core-flicker 0.2s linear infinite;
+  box-shadow:
+    0 0 26px rgba(34, 197, 94, 1),
+    0 0 50px rgba(34, 197, 94, 0.6);
+}
+
+.agent-pulse.active .pulse-core::before {
+  animation: core-fade 1.0s ease-in-out infinite;
+}
+
+.agent-pulse.active .pulse-core::after {
+  animation: halo-pulse 1.6s ease-in-out infinite;
+}
+
+.agent-pulse.active .pulse-ring.outer {
+  animation: ring-expand-slow 1.0s ease-out infinite;
 }
 
 .agent-pulse.active .pulse-ring.inner {
-  animation-delay: 0.35s;
+  animation: ring-expand-fast 0.7s ease-out infinite;
+  animation-delay: 0.2s;
 }
 
-/* "high-intensity" for heavy stages */
-.agent-pulse.intense .pulse-ring {
-  animation-duration: 0.9s;
+/* INTENSE: almost unstable – faster, brighter, jittering & tilting */
+
+.agent-pulse.intense .pulse-core {
+  /* Violent hybrid: red shock layer + original green/blue core */
+  background:
+    radial-gradient(circle at 30% 30%, #fee2e2, #f97373 32%, transparent 58%),
+    radial-gradient(circle at 70% 70%, #a5f3fc, #22c55e 72%);
+  animation:
+    core-breathe-intense 0.7s ease-in-out infinite,
+    core-flicker-intense 0.14s linear infinite,
+    core-jitter 0.9s ease-in-out infinite,
+    core-tilt 1.6s ease-in-out infinite;
+  box-shadow:
+    0 0 40px rgba(248, 113, 113, 1),
+    0 0 80px rgba(239, 68, 68, 0.95),
+    0 0 96px rgba(34, 197, 94, 0.75);
 }
 
-@keyframes pulse-expand {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.45;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
+.agent-pulse.intense .pulse-core::before {
+  animation: core-fade-intense 0.6s ease-in-out infinite;
 }
 
-/* --- PIPELINE ------------------------------------------------------ */
+.agent-pulse.intense .pulse-core::after {
+  animation: halo-pulse-intense 1.0s ease-in-out infinite;
+  border-color: rgba(56, 189, 248, 0.9);
+}
+
+.agent-pulse.intense .pulse-ring.outer {
+  animation: ring-expand-slow 0.7s ease-out infinite;
+}
+
+.agent-pulse.intense .pulse-ring.inner {
+  animation: ring-expand-fast 0.5s ease-out infinite;
+  animation-delay: 0.1s;
+}
+
+/* KEYFRAMES – core -------------------------------------------------- */
+
+@keyframes core-breathe {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes core-breathe-intense {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes core-flicker {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.2); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes core-flicker-intense {
+  0%   { filter: brightness(1); }
+  33%  { filter: brightness(1.3); }
+  66%  { filter: brightness(0.9); }
+  100% { filter: brightness(1.25); }
+}
+
+@keyframes core-fade {
+  0%   { opacity: 0.1; }
+  40%  { opacity: 0.9; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes core-fade-intense {
+  0%   { opacity: 0.4; }
+  40%  { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+@keyframes halo-pulse {
+  0%   { opacity: 0.25; transform: scale(1); }
+  50%  { opacity: 0.7;  transform: scale(1.1); }
+  100% { opacity: 0.3;  transform: scale(1); }
+}
+
+@keyframes halo-pulse-intense {
+  0%   { opacity: 0.5; transform: scale(1); }
+  50%  { opacity: 1;   transform: scale(1.18); }
+  100% { opacity: 0.6; transform: scale(1); }
+}
+
+@keyframes core-jitter {
+  0%   { transform: translate(0,0); }
+  20%  { transform: translate(1.5px, -0.5px); }
+  40%  { transform: translate(-1px, 1px); }
+  60%  { transform: translate(1px, 0.5px); }
+  80%  { transform: translate(-1.5px, -1px); }
+  100% { transform: translate(0,0); }
+}
+
+@keyframes core-tilt {
+  0%   { transform: rotate(0deg); }
+  50%  { transform: rotate(2deg); }
+  100% { transform: rotate(-2deg); }
+}
+
+/* KEYFRAMES – rings ------------------------------------------------- */
+
+@keyframes ring-expand-slow {
+  0%   { transform: scale(0.5); opacity: 0.7; }
+  60%  { transform: scale(1.6); opacity: 0.2; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes ring-expand-fast {
+  0%   { transform: scale(0.4); opacity: 0.8; }
+  55%  { transform: scale(1.4); opacity: 0.25; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+/* --- PIPELINE (HIGH-MOTION VERSION) ------------------------------- */
 
 .pipeline {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
   margin-top: 0.75rem;
+  position: relative;
 }
 
+/* subtle ambient motion even when not running */
 .pipeline-track {
   position: relative;
   height: 4px;
   border-radius: 999px;
   background: linear-gradient(
     to right,
-    rgba(148, 163, 184, 0.4),
-    rgba(148, 163, 184, 0.1)
+    rgba(148, 163, 184, 0.45),
+    rgba(148, 163, 184, 0.12)
   );
   overflow: hidden;
+}
+
+.pipeline-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.09),
+    transparent
+  );
+  transform: translateX(-120%);
+  opacity: 0.25;
+  pointer-events: none;
+  animation: track-shimmer-soft 3.4s linear infinite;
 }
 
 .pipeline-progress {
@@ -799,7 +967,46 @@ body.app-body {
   width: 0%;
   background: linear-gradient(to right, #4ade80, #22c55e, #0ea5e9);
   border-radius: inherit;
-  transition: width 300ms ease-out;
+  transition: width 280ms ease-out;
+  overflow: hidden;
+  will-change: width;
+}
+
+.pipeline-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-size: 220% 100%;
+  opacity: 0.3;
+  transform: translateX(0);
+  pointer-events: none;
+  animation: progress-shimmer-soft 2.8s linear infinite;
+}
+
+/* when we have JS adding .pipeline--running, crank everything up */
+
+.pipeline--running {
+  animation: pipeline-jitter 2.4s ease-in-out infinite;
+}
+
+.pipeline--running .pipeline-track::after {
+  opacity: 0.5;
+  animation: track-shimmer 1.6s linear infinite;
+}
+
+.pipeline--running .pipeline-progress::after {
+  opacity: 0.9;
+  animation: progress-shimmer 1.1s linear infinite;
+}
+
+.pipeline--running .pipeline-progress {
+  transition: width 380ms ease-in-out;
 }
 
 .pipeline-steps {
@@ -832,17 +1039,23 @@ body.app-body {
   color: var(--muted-foreground, #9ca3af);
 }
 
-/* state colors */
+/* state colors + motion */
+
 .pipeline-step.completed .step-dot {
   background: #22c55e;
   border-color: #22c55e;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
 }
 
 .pipeline-step.active .step-dot {
   background: #0ea5e9;
   border-color: #0ea5e9;
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.6);
+  box-shadow: 0 0 14px rgba(14, 165, 233, 0.9);
+  animation: step-bounce 0.7s ease-in-out infinite;
+}
+
+.pipeline--running .pipeline-step.active .step-dot {
+  animation: step-bounce-intense 0.55s ease-in-out infinite;
 }
 
 .pipeline-step.pending .step-dot {
@@ -852,7 +1065,8 @@ body.app-body {
 .pipeline-step.error .step-dot {
   background: #ef4444;
   border-color: #ef4444;
-  box-shadow: 0 0 10px rgba(248, 113, 113, 0.6);
+  box-shadow: 0 0 14px rgba(248, 113, 113, 0.8);
+  animation: step-error-flash 0.5s ease-in-out infinite;
 }
 
 .pipeline-step.completed .step-label {
@@ -861,6 +1075,66 @@ body.app-body {
 
 .pipeline-step.active .step-label {
   color: #f9fafb;
+}
+
+.pipeline-step.just-completed .step-dot {
+  animation: completed-pop 0.35s ease-out;
+}
+
+/* KEYFRAMES – shimmer + jitter -------------------------------------- */
+
+@keyframes progress-shimmer-soft {
+  0%   { transform: translateX(-20%); }
+  100% { transform: translateX(20%); }
+}
+
+@keyframes track-shimmer-soft {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes progress-shimmer {
+  0%   { transform: translateX(-30%); }
+  100% { transform: translateX(30%); }
+}
+
+@keyframes track-shimmer {
+  0%   { transform: translateX(-140%); }
+  100% { transform: translateX(140%); }
+}
+
+@keyframes pipeline-jitter {
+  0%   { transform: translateX(0) translateY(0); }
+  25%  { transform: translateX(0.7px) translateY(-0.6px); }
+  50%  { transform: translateX(-0.9px) translateY(0.6px); }
+  75%  { transform: translateX(0.6px) translateY(0.4px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+/* KEYFRAMES – dots --------------------------------------------------- */
+
+@keyframes step-bounce {
+  0%   { transform: scale(1); box-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
+  50%  { transform: scale(1.12); box-shadow: 0 0 18px rgba(14, 165, 233, 0.9); }
+  100% { transform: scale(1); box-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
+}
+
+@keyframes step-bounce-intense {
+  0%   { transform: scale(1) translateY(0); }
+  40%  { transform: scale(1.18) translateY(-1px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes step-error-flash {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.4); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes completed-pop {
+  0%   { transform: scale(0.9); }
+  60%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
 }
 
 /* RESPONSIVE-ish */
@@ -874,4 +1148,153 @@ body.app-body {
   .card--trace {
     max-height: 220px;
   }
+  /* === PIPELINE STAGE → TOOL LABELS (SUBTLE VERSION) ===================== */
+/* These are NEW classes. They DO NOT override any existing styling. */
+
+  .step-tools {
+    margin-top: 2px;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    opacity: 0.75;
+  }
+
+  .step-tool-pill {
+    padding: 1px 5px;
+    border-radius: 6px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--text-soft);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Slight glow when multiple tools feed a stage (heavy load) */
+  .pipeline-step.step-heavy-load .step-dot {
+    box-shadow: 0 0 10px rgba(79, 140, 255, 0.55);
+  }
+/* === FIX: Pipeline stage tool labels (Option A subtle version) === */
+
+  .step-tools {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 3px;
+    line-height: 1.1;
+    opacity: 0.75;
+  }
+
+  .step-tool-pill {
+    display: inline-block;
+    margin: 1px 3px;
+    padding: 1px 4px;
+    font-size: 8px !important;
+    letter-spacing: 0.03em;
+    border: 1px solid rgba(150, 160, 180, 0.35);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(200, 210, 225, 0.85);
+  }
+
+  /* === Pulse Variant Modes ========================================== */
+
+#agent-pulse.mode-a .pulse-core {
+  background: radial-gradient(circle,
+    rgba(70,140,255,0.9),
+    rgba(40,90,200,0.6)
+  );
+}
+#agent-pulse.mode-a .pulse-ring.outer {
+  animation: pulseA 1.2s infinite;
+}
+
+#agent-pulse.mode-b .pulse-core {
+  background: radial-gradient(circle,
+    rgba(0,180,140,0.85),
+    rgba(0,140,100,0.6)
+  );
+}
+#agent-pulse.mode-b .pulse-ring.outer {
+  animation: pulseB 1.4s infinite;
+}
+
+#agent-pulse.mode-c .pulse-core {
+  background: radial-gradient(circle,
+    rgba(255,90,120,0.9),
+    rgba(120,30,40,0.6)
+  );
+}
+#agent-pulse.mode-c .pulse-ring.outer {
+  animation: pulseC 1.0s infinite;
+}
+
+@keyframes pulseA {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  40%  { transform: scale(1.15); opacity: 1;   }
+  100% { transform: scale(1);   opacity: 0.7; }
+}
+
+@keyframes pulseB {
+  0%   { transform: scale(1);     opacity: 0.7; }
+  50%  { transform: scale(1.25);   opacity: 0.9; }
+  100% { transform: scale(1);     opacity: 0.7; }
+}
+
+@keyframes pulseC {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  50%  { transform: scale(1.12); opacity: 1;   }
+  100% { transform: scale(1);   opacity: 0.8; }
+}
+/* ============================================================
+   VIOLENT PULSE MODE — Agent Core
+   ============================================================ */
+
+#agent-pulse {
+  transition: all 120ms cubic-bezier(0.1, 0.5, 0.3, 1);
+}
+
+/* IDLE — calm, but not too zen */
+#agent-pulse.idle {
+  background: radial-gradient(circle, #1e2530, #111821);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+  transform: scale(0.95);
+}
+
+/* ACTIVE — high-frequency jitter, blue → green flickers */
+#agent-pulse.active {
+  animation: violent-active-flicker 0.22s infinite;
+  transform: scale(1.1) rotate(0.6deg);
+}
+
+/* INTENSE — violent red surges, hard strobing, unstable scaling */
+#agent-pulse.intense {
+  animation: violent-intense-strobe 0.13s infinite steps(2);
+  transform: scale(1.25) rotate(-1deg) skewX(1deg);
+  box-shadow:
+    0 0 24px rgba(255, 0, 0, 0.45),
+    0 0 48px rgba(255, 0, 0, 0.35),
+    0 0 64px rgba(255, 80, 40, 0.3);
+}
+
+/* Flicker: blue/green rapid pulse */
+@keyframes violent-active-flicker {
+  0%   { background: radial-gradient(circle, #0affff, #005f5f); }
+  25%  { background: radial-gradient(circle, #00ffaa, #004f2f); }
+  50%  { background: radial-gradient(circle, #00d9ff, #003d5f); }
+  75%  { background: radial-gradient(circle, #00ffcc, #004440); }
+  100% { background: radial-gradient(circle, #0affff, #005f5f); }
+}
+
+/* Red strobe: violent heartbeat */
+@keyframes violent-intense-strobe {
+  0%   { background: radial-gradient(circle, #ff1a1a, #3a0000); }
+  43%  { background: radial-gradient(circle, #ff4d00, #5a0000); }
+  51%  { background: radial-gradient(circle, #ff0000, #000000); }
+  70%  { background: radial-gradient(circle, #ff3300, #2a0000); }
+  100% { background: radial-gradient(circle, #ff1a1a, #3a0000); }
+}
+
+
 }
