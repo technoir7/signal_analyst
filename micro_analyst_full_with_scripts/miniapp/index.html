@@ -143,21 +143,40 @@
           </section>
 
           <!-- PLAN CARD -->
-          <section class="card card--plan">
+          <section class="card card--plan" id="tool-pipeline-card">
             <header class="card-header">
-              <span class="card-label">TOOL PLAN (PREDICTED)</span>
-              <span
-                class="card-status badge-status badge-status--neutral"
-                id="plan-summary-badge"
-              >
-                Waiting for input
-              </span>
+              <h2>Tool Execution Pipeline</h2>
+              <p class="card-subtitle">Deterministic OSINT workflow</p>
             </header>
-            <div class="plan-grid" id="plan-grid"></div>
+
+            <div class="pipeline">
+              <div class="pipeline-track">
+                <div class="pipeline-progress" id="pipeline-progress"></div>
+              </div>
+
+              <div class="pipeline-steps">
+                <div class="pipeline-step" data-step="scrape">
+                  <span class="step-dot"></span>
+                  <span class="step-label">Surface scrape</span>
+                </div>
+                <div class="pipeline-step" data-step="seo">
+                  <span class="step-dot"></span>
+                  <span class="step-label">SEO probe</span>
+                </div>
+                <div class="pipeline-step" data-step="tech">
+                  <span class="step-dot"></span>
+                  <span class="step-label">Tech stack</span>
+                </div>
+                <div class="pipeline-step" data-step="synthesis">
+                  <span class="step-dot"></span>
+                  <span class="step-label">Report synthesis</span>
+                </div>
+              </div>
+            </div>
+
             <footer class="card-footer">
-              <p class="microcopy">
-                Plan mirrors the deterministic routing rules used by the backend planning client.
-              </p>
+              <p class="microcopy">Minimal tool list (planned)</p>
+              <div class="plan-grid" id="plan-grid"></div>
             </footer>
           </section>
         </section>
@@ -165,62 +184,20 @@
         <!-- ROW 2: SNAPSHOT + MCP + TRACE (3 COLUMNS) -->
         <section class="row row--surface">
           <!-- SURFACE SNAPSHOT -->
-          <section class="card card--surface">
+          <section class="card card--surface" id="osint-surface-card">
             <header class="card-header">
-              <span class="card-label">OSINT SURFACE SNAPSHOT</span>
-              <span
-                class="card-status badge-status badge-status--neutral"
-                id="surface-badge"
-              >
-                Waiting for input
-              </span>
+              <h2>Live agent activity monitor</h2>
+              <!-- <h2>OSINT Surface Snapshot</h2> -->
+              <!-- <p class="card-subtitle">Live agent activity monitor</p> -->
             </header>
 
-            <div class="surface-grid">
-              <div class="surface-column">
-                <div class="mini-metric">
-                  <div class="mini-metric-label">Meta / Headings</div>
-                  <div class="mini-metric-value" id="metric-meta-issues">–</div>
-                  <div class="mini-metric-sub">Issues detected</div>
-                </div>
-
-                <div class="mini-metric">
-                  <div class="mini-metric-label">Keywords</div>
-                  <div class="mini-metric-value" id="metric-keywords">–</div>
-                  <div class="mini-metric-sub">Top terms detected</div>
-                </div>
-              </div>
-
-              <div class="surface-column">
-                <div class="mini-metric">
-                  <div class="mini-metric-label">Tech Stack</div>
-                  <div class="mini-metric-value" id="metric-frameworks">–</div>
-                  <div class="mini-metric-sub">Frameworks &amp; analytics</div>
-                </div>
-
-                <div class="mini-metric">
-                  <div class="mini-metric-label">Hiring / Ads</div>
-                  <div class="mini-metric-value" id="metric-hiring">–</div>
-                  <div class="mini-metric-sub">Open roles / ad platforms</div>
-                </div>
-              </div>
-
-              <div class="surface-column surface-column--meta">
-                <div class="surface-meta-row">
-                  <div class="surface-meta-label">Company</div>
-                  <div class="surface-meta-value" id="meta-company-name">—</div>
-                </div>
-                <div class="surface-meta-row">
-                  <div class="surface-meta-label">URL</div>
-                  <div class="surface-meta-value" id="meta-company-url">—</div>
-                </div>
-                <div class="surface-meta-row surface-meta-row--inference">
-                  <div class="surface-meta-label">Inference</div>
-                  <div class="surface-meta-value surface-meta-value--wide" id="meta-inference">
-                    Surface read will appear here after a run.
-                  </div>
-                </div>
-              </div>
+            <div id="agent-pulse" class="agent-pulse">
+              <div class="pulse-ring outer"></div>
+              <div class="pulse-ring inner"></div>
+              <div class="pulse-core"></div>
+              <p class="agent-pulse-label" id="agent-pulse-label">
+                Idle — ready for next target
+              </p>
             </div>
           </section>
 

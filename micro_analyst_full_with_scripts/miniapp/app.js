@@ -16,7 +16,6 @@ const analyzeButton = document.getElementById("analyze-button");
 const statusText = document.getElementById("status-text");
 const statusDot = document.querySelector(".dot");
 const cardStatusBadge = document.getElementById("card-status-badge");
-const planSummaryBadge = document.getElementById("plan-summary-badge");
 
 const metricMetaIssues = document.getElementById("metric-meta-issues");
 const metricKeywords = document.getElementById("metric-keywords");
@@ -44,6 +43,11 @@ const reportStatusBadge = document.getElementById("report-status-badge");
 const reportMarkdown = document.getElementById("report-markdown");
 
 const planGrid = document.getElementById("plan-grid");
+
+const agentPulseEl = document.getElementById("agent-pulse");
+const agentPulseLabel = document.getElementById("agent-pulse-label");
+const pipelineProgressEl = document.getElementById("pipeline-progress");
+const pipelineStepEls = Array.from(document.querySelectorAll(".pipeline-step"));
 
 const cmdkBackdrop = document.getElementById("cmdk-backdrop");
 const cmdkInput = document.getElementById("cmdk-input");
@@ -113,6 +117,88 @@ function setReportStatus(state, label) {
 function setLoadingState(isLoading) {
   analyzeButton.disabled = isLoading;
   analyzeButton.textContent = isLoading ? "Running…" : "Run Analysis";
+}
+
+// --- AGENT PULSE + PIPELINE -----------------------------------------
+
+const STEP_ORDER = ["scrape", "seo", "tech", "synthesis"];
+
+function setAgentPulseState(state, label) {
+  if (!agentPulseEl) return;
+
+  agentPulseEl.classList.remove("idle", "active", "intense");
+  agentPulseEl.classList.add(state);
+
+  if (agentPulseLabel && label) {
+    agentPulseLabel.textContent = label;
+  }
+}
+
+function resetPipeline() {
+  pipelineStepEls.forEach((el) => {
+    el.classList.remove("completed", "active", "pending", "error");
+    el.classList.add("pending");
+  });
+  if (pipelineProgressEl) pipelineProgressEl.style.width = "0%";
+}
+
+function setPipelineStage(stageKey) {
+  if (!pipelineStepEls.length) return;
+  const idx = STEP_ORDER.indexOf(stageKey);
+  if (idx === -1) return;
+
+  pipelineStepEls.forEach((el, i) => {
+    el.classList.remove("completed", "active", "pending", "error");
+
+    if (i < idx) {
+      el.classList.add("completed");
+    } else if (i === idx) {
+      el.classList.add("active");
+    } else {
+      el.classList.add("pending");
+    }
+  });
+
+  const progressPct = (idx / (STEP_ORDER.length - 1)) * 100;
+  if (pipelineProgressEl) {
+    pipelineProgressEl.style.width = `${progressPct}%`;
+  }
+}
+
+function markPipelineError(stageKey) {
+  const stepEl = document.querySelector(`.pipeline-step[data-step="${stageKey}"]`);
+  if (stepEl) {
+    stepEl.classList.remove("completed", "active", "pending");
+    stepEl.classList.add("error");
+  }
+}
+
+function startAnalysisUI() {
+  setAgentPulseState("active", "Scanning public surface…");
+  resetPipeline();
+  setPipelineStage("scrape");
+}
+
+function updateStageFromToolName(toolName) {
+  const name = toolName || "";
+  if (name.includes("web_scrape")) return setPipelineStage("scrape");
+  if (name.includes("seo")) return setPipelineStage("seo");
+  if (name.includes("tech_stack")) return setPipelineStage("tech");
+  if (name.includes("synth") || name.includes("report")) {
+    setAgentPulseState("intense", "Synthesizing intelligence…");
+    return setPipelineStage("synthesis");
+  }
+}
+
+function finishAnalysisUI(success = true) {
+  if (success) {
+    setAgentPulseState("idle", "Complete — ready for next target");
+    setPipelineStage("synthesis");
+    if (pipelineProgressEl) pipelineProgressEl.style.width = "100%";
+  } else {
+    setAgentPulseState("idle", "Analysis failed — adjust target & retry");
+    markPipelineError("synthesis");
+  }
 }
 
 // --- COT / TRACE -----------------------------------------------------
@@ -230,16 +316,6 @@ function renderPlanGrid(plan) {
     pill.textContent = label;
     planGrid.appendChild(pill);
   });
-
-  const activeLabels = items
-    .filter(([_, key]) => plan[key])
-    .map(([label]) => label);
-
-  if (!activeLabels.length) {
-    planSummaryBadge.textContent = "No tools selected yet";
-  } else {
-    planSummaryBadge.textContent = `Planned: ${activeLabels.join(" · ")}`;
-  }
 }
 
 // --- DEMO PROFILES ---------------------------------------------------
@@ -467,8 +543,8 @@ function renderProfileAndReport(profile, markdown) {
 
   const effectiveUrl = rawUrl || formUrl || "—";
 
-  metaCompanyName.textContent = effectiveName || "—";
-  metaCompanyUrl.textContent = effectiveUrl;
+  if (metaCompanyName) metaCompanyName.textContent = effectiveName || "—";
+  if (metaCompanyUrl) metaCompanyUrl.textContent = effectiveUrl;
 
   // Counts (only if probe didn't error)
   const metaIssuesCount =
@@ -479,10 +555,14 @@ function renderProfileAndReport(profile, markdown) {
   const openRoles = safeList(hiring.open_roles);
   const hiringCount = openRoles.length;
 
-  metricMetaIssues.textContent = seo.error ? "—" : metaIssuesCount.toString();
-  metricKeywords.textContent = seo.error ? "—" : keywordCount.toString();
-  metricFrameworks.textContent = tech.error ? "—" : frameworksCount.toString();
-  metricHiring.textContent = hiring.error ? "—" : hiringCount.toString();
+  if (metricMetaIssues)
+    metricMetaIssues.textContent = seo.error ? "—" : metaIssuesCount.toString();
+  if (metricKeywords)
+    metricKeywords.textContent = seo.error ? "—" : keywordCount.toString();
+  if (metricFrameworks)
+    metricFrameworks.textContent = tech.error ? "—" : frameworksCount.toString();
+  if (metricHiring)
+    metricHiring.textContent = hiring.error ? "—" : hiringCount.toString();
 
   // --- OSINT SURFACE SNAPSHOT (center text block) --------------------
   let snapshot = web.snapshot_summary || "";
@@ -551,8 +631,10 @@ function renderProfileAndReport(profile, markdown) {
     }
   }
 
-  metaInference.textContent =
-    snapshot || "Surface read will appear here after a run.";
+  if (metaInference) {
+    metaInference.textContent =
+      snapshot || "Surface read will appear here after a run.";
+  }
 
   // --- Markdown → simple HTML for report -----------------------------
 
@@ -688,6 +770,8 @@ form.addEventListener("submit", async (event) => {
   renderPlanGrid(plan);
   setMcpPills(plan);
 
+  startAnalysisUI();
+
   resetCot();
   appendCotLine(
     "plan",
@@ -767,6 +851,7 @@ form.addEventListener("submit", async (event) => {
     setStatus("idle", "Analysis complete. Refine focus or change target.");
     setCotStatus("idle", "READY");
     setReportStatus("idle", "Complete");
+    finishAnalysisUI(true);
   } catch (err) {
     console.error(err);
     setStatus(
@@ -779,6 +864,7 @@ form.addEventListener("submit", async (event) => {
       "error",
       "Failure during analysis. Check console logs or backend trace for details."
     );
+    finishAnalysisUI(false);
   } finally {
     setLoadingState(false);
   }
@@ -802,4 +888,6 @@ form.addEventListener("submit", async (event) => {
   setStatus("idle", "Idle. Ready for new target.");
   setCotStatus("idle", "AWAITING INPUT");
   setReportStatus("idle", "Ready");
+  setAgentPulseState("idle", "Idle — ready for next target");
+  resetPipeline();
 })();
