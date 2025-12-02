@@ -24,7 +24,7 @@ This project implements the **full machine spec** of the hackathon prompt and th
 
 ---
 
-## **2. Why This Agent Matters (Hackathon-Focused Pitch)**
+## **2. Why This Agent Matters **
 
 Judges are looking for:
 
