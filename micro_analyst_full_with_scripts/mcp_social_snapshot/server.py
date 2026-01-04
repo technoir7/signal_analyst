@@ -21,7 +21,7 @@ def run_social_snapshot(payload: SocialSnapshotInput) -> SocialSnapshotOutput:
             instagram=None,
             youtube=None,
             twitter=None,
-            error="Social discovery not implemented in this prototype.",
+            error="[STUB] Social discovery not implemented in this prototype.",
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("mcp_social_snapshot: unhandled error")

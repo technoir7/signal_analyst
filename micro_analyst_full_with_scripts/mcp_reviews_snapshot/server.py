@@ -17,7 +17,7 @@ def run_reviews_snapshot(payload: ReviewsSnapshotInput) -> ReviewsSnapshotOutput
         )
 
         summary = (
-            "No external review data was fetched in this prototype. "
+            "[STUB] No external review data was fetched in this prototype. "
             "This section is reserved for future integration with Yelp / Google "
             "and other review platforms."
         )

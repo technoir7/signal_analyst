@@ -441,16 +441,25 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
         jobs[job_id]["progress"] = 85
 
         # --- Ads snapshot ---------------------------------------------------------
+        # --- Ads snapshot ---------------------------------------------------------
+        # GUARD: Ads service is missing in prototype. Explicitly feature-flagged off.
+        ENABLE_ADS_SERVICE = os.getenv("ENABLE_ADS_SERVICE", "0") == "1"
+        
         if plan.get("use_ads_snapshot"):
-            try:
-                ads_payload = {"url": req.company_url}
-                ads_result = _post_json(MCP_ADS_SNAPSHOT_URL, ads_payload)
-                if ads_result.get("ok") is not False:
-                    profile = merge_ads_data(profile, ads_result)
-                else:
-                    logger.warning(f"[Job {job_id}] Ads failed: {ads_result.get('error')}")
-            except Exception as e:
-                logger.error(f"[Job {job_id}] Ads exception: {e}")
+            if ENABLE_ADS_SERVICE:
+                try:
+                    ads_payload = {"url": req.company_url}
+                    ads_result = _post_json(MCP_ADS_SNAPSHOT_URL, ads_payload)
+                    if ads_result.get("ok") is not False:
+                        profile = merge_ads_data(profile, ads_result)
+                    else:
+                        logger.warning(f"[Job {job_id}] Ads failed: {ads_result.get('error')}")
+                except Exception as e:
+                    logger.error(f"[Job {job_id}] Ads exception: {e}")
+            else:
+                logger.info(f"[Job {job_id}] Ads snapshot skipped (ENABLE_ADS_SERVICE=0)")
+                # No-op: profile remains unchanged regarding ads
+
         
         jobs[job_id]["progress"] = 90
 
