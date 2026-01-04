@@ -19,21 +19,25 @@ In a world drowning in public data, the bottleneck for investment analysts, sale
 
 ## **2. The Intelligence Pipeline**
 
-The system operates via a refined **Plan → Probe → Synthesize** architecture:
+The system operates via a refined **Plan → Probe → Infer → Synthesize** architecture:
 
 ### **Phase A: The Planning Stage**
-Unlike "dumb" scrapers, Signal Analyst begins with reasoning. The **LLM Planning Layer** inspects the target domain and the user’s specific research focus. It dynamically selects which specialized Model Context Protocol (MCP) microservices to activate—saving compute and avoiding detection by prioritizing relevant data surfaces.
+Unlike "dumb" scrapers, Signal Analyst begins with reasoning. The **LLM Planning Layer** inspects the target domain and the user’s research focus. It dynamically selects which specialized Model Context Protocol (MCP) microservices to activate—saving compute and avoiding detection.
 
 ### **Phase B: Parallel Surface Probing**
 The engine orchestrates a swarm of independent MCP services:
-*   **Web Scrape**: Extracts semantic metadata and core messaging.
-*   **SEO Probe**: Analyzes search visibility and organic reach.
-*   **Tech Stack**: Fingerprints frameworks, libraries, and backend infrastructure.
-*   **Reviews & Social**: `[STUB]` Architecture ready for external API integration.
-*   **Careers & Ads**: `[STUB]` Architecture ready for hiring signal integration.
+*   **Web Scrape**: Extracts semantic metadata using browser-mimicking headers and rotating UAs.
+*   **SEO Probe**: Analyzes search visibility and structural hygiene.
+*   **Tech Stack**: Fingerprints frameworks and infrastructure.
+*   **Reviews / Social / Hiring / Ads**: Signal collectors that feed the inference engine.
 
-### **Phase C: Expert Synthesis**
-Once the data is returned, an LLM (either a high-concurrency cloud model like Gemini or a privacy-first local instance like Gemma 3 via Ollama) sits as the "Analyst." It merges the raw JSON telemetry into a structured intelligence report, emphasizing tensions, opportunities, and risks.
+### **Phase C: Interpretive Inference (Core Intelligence)**
+The hallmark of Signal Analyst is the **Interpretive Inference Layer**. Instead of emitting "no data" errors when a scraper is blocked or a service is absent, the system converts **absence into signal**. 
+*   *Example*: No social footprint → "Quiet Professional" posture (relationship-driven sales).
+*   *Example*: Opaque tech stack → Correlates with legacy enterprise or air-gapped security.
+
+### **Phase D: Expert Synthesis**
+The **Inferred Profile** is passed to the LLM (Gemini or Ollama) to produce the final brief. This stage always includes a mandatory **Strategic Posture Summary**—a high-density synthesis of what the company optimizes for and where it is vulnerable.
 
 ---
 
@@ -54,6 +58,11 @@ pip install -r requirements.txt
 
 # 4. Launch the primary Agent
 uvicorn agent.micro_analyst:app --port 8000
+
+# 5. Launch the Frontend
+cd miniapp
+python3 -m http.server 8080
+# Visit http://localhost:8080 to start your research.
 ```
 
 ---
@@ -68,12 +77,17 @@ Signal Analyst is hardened for production deployment, moving beyond "toy" status
 *   **Quota Enforcement**: Built-in daily reporting limits per API key (`DAILY_QUOTA_PER_KEY`).
 *   **Sliding Window Rate Limiting**: Prevents API abuse and infrastructure cost-runaway.
 
-### **Security Hardening**
+### **Interpretive Inference Layer**
+*   **Absence-as-Signal**: No section is ever left empty. Missing data is mapped to plausible strategic causes (e.g., "Enterprise SLG motion").
+*   **Strategic Posture Mandatory**: Every report is capped with a synthesized summary of the target's operational optimize-for.
+*   **Epistemic Honesty**: Uses probabilistic language ("suggests," "likely") to ensure inferences aren't mistaken for hard-scraped facts.
+
+### **Security & Robustness**
 *   **Default Authentication**: API Key authentication enabled by default (`ENABLE_AUTH=1`).
+*   **WAF Bypass**: Scraper uses browser-mimicking headers (`Referer`, `Accept-Language`) and extended timeouts (300s) to handle aggressive WAFs and high-latency synthesis.
 *   **Network Isolation**: MCP microservices bind to `127.0.0.1` to prevent external access.
-*   **SSRF Protection**: Strict validation logic blocks attacks at the `/analyze` gateway targeting `localhost` or cloud metadata.
-*   **Ownership Validation**: Users can only access reports belonging to their API key.
-*   **Input Sanitization**: Pydantic-enforced length limits on all metadata to prevent buffer overruns or memory-based attacks.
+*   **SSRF Protection**: Strict validation logic blocks attacks at the `/analyze` gateway.
+*   **Input Sanitization**: Pydantic-enforced limits on all metadata.
 
 ---
 
@@ -123,17 +137,34 @@ graph TD
     MCP_Swarm --> WS[Web Scrape]
     MCP_Swarm --> SEO[SEO Probe]
     MCP_Swarm --> TS[Tech Stack]
-    MCP_Swarm --> REV[Reviews]
+    MCP_Swarm --> EXT[Ext. Signals]
     end
     
-    WS & SEO & TS & REV --> LLMSynth[LLM Synthesis]
+    WS & SEO & TS & EXT --> INF[Interpretive Inference Engine]
+    INF --> LLMSynth[LLM Synthesis]
     LLMSynth --> FinalReport[Markdown / PDF Export]
     FinalReport --> JobQueue
 ```
 
 ---
 
-## **8. Deployment Notes**
+## **9. Verification & Testing**
+
+To ensure the interpretive inference layer remains robust and honest, run the automated test suite:
+
+```bash
+# From micro_analyst_full_with_scripts/
+python3 -m unittest tests/test_inference.py
+```
+
+This suite validates:
+1.  **Empty Input Resilience**: Ensures reports still generate correctly when all scrapers fail.
+2.  **Strategic Soundness**: Verifies that missing signals (e.g., no reviews) are correctly mapped to plausible strategic interpretations.
+3.  **Epistemic Honesty**: Confirms the system uses probabilistic qualifiers and avoids hallucinating concrete metrics.
+
+---
+
+## **10. Deployment Notes**
 
 *   **PDF Export**: Requires system-level dependencies for `WeasyPrint` (`brew install pango cairo`). If missing, the system gracefully disables PDF export while maintaining all other functionality.
 *   **Proxy Rotation**: For high-volume professional use, we recommend wrapping the `web_scrape` service in a proxy rotation layer (e.g., BrightData or ScraperAPI) to bypass advanced bot detection.
