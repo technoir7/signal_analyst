@@ -56,13 +56,17 @@ pip install -r requirements.txt
 # 3. Start MCP microservices
 ./run_all.sh
 
-# 4. Launch the primary Agent
-uvicorn agent.micro_analyst:app --port 8000
+# 4. Launch the Backend (REQUIRED)
+./run_all.sh
+# Wait for: "Backend ready at http://localhost:8000"
+# Verify: curl http://localhost:8000/health
 
-# 5. Launch the Frontend
+# 5. Launch the Frontend (optional, for UI)
 cd miniapp
 python3 -m http.server 8080
-# Visit http://localhost:8080 to start your research.
+# Visit http://localhost:8080
+
+# ⚠️ The frontend will NOT work unless the backend is running on port 8000.
 ```
 
 ---
