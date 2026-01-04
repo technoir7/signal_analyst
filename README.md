@@ -1,255 +1,179 @@
-# **Micro-Analyst OSINT Agent**
+# SPEC_D_001: Micro-Analyst OSINT Intelligence System
 
-### **A deterministic, multi-MCP intelligence system for real-time organizational analysis**
-
-
-
+**A deterministic OSINT enrichment engine with LLM-based synthesis, suitable for competitor intelligence, deal sourcing, and internal decision support.**
 
 ---
 
-## **1. Overview — What This Agent Does**
-
-Micro-Analyst is a **self-directed autonomous OSINT analyst** built for the **Verisense | Sense Space** hackathon.
-It uses a chain-of-thought planning stage, modular MCP microservices, and deterministic heuristics to produce **consultant-grade intelligence reports** on any company’s public surface:
-
-* Website structure & messaging
-* SEO posture
-* Tech stack fingerprinting
-* Reviews, social signals, hiring behavior
-* Ads presence (if available)
-* Unified Pydantic model: `CompanyOSINTProfile`
-* Fully deterministic fallback behaviors
-
-This project implements the **full machine spec** of the hackathon prompt and the refined technical constraints in the project state file.
-
----
-
-## **2. Why This Agent Matters **
-
-Judges are looking for:
-
-### **✔ Autonomous behavior**
-
-Micro-Analyst performs a **planning step** using an LLM abstraction (`plan_tools`) to decide which MCP tools to activate based on company type, URL, and domain-specific keywords. When planning fails, it automatically falls back to a safe deterministic plan.
-
-### **✔ Modular MCP architecture**
-
-Each OSINT function is a **standalone FastAPI microservice**—independent, stateless, and robust.
-All MCPs conform to the hackathon’s `/run` JSON contract.
-
-### **✔ Determinism + Reliability**
-
-The entire system is designed for **zero nondeterminism**, no external network calls (beyond fetching HTML), no randomness, stable Pydantic v2 schemas, and test-enforced invariants.
-
-### **✔ Real-world value**
-
-Micro-Analyst models how a modern A2A-style agent can **sense, interpret, and act** on public-facing organizational data—precisely the kind of agent the hackathon wants.
-
-### **✔ Human-readable output**
-
-Every run ends with a structured Markdown intelligence report synthesizing all MCP outputs.
-
----
-
-## **3. Architecture**
-
-```
-project_root/
-    core/
-    mcp_web_scrape/
-    mcp_seo_probe/
-    mcp_tech_stack/
-    mcp_reviews_snapshot/
-    mcp_social_snapshot/
-    mcp_careers_intel/
-    agent/
-    miniapp/
-    utils/
-    demo_data/
-```
-
-This structure follows the exact required directory layout in the hackathon specification.
-
-Each MCP is a **FastAPI service** implementing:
-
-* `POST /run`
-* deterministic heuristics
-* strict Pydantic I/O schemas
-* safe error handling
-* no LLM calls inside MCPs
-
----
-
-## **4. Intelligence Pipeline**
-
-### **Step 1 — Planning**
-
-`llm_client.plan_tools()` inspects:
-
-* `company_url`
-* `focus`
-* semantic keyword cues (reviews, hiring, ads, etc.)
-
-Output: a JSON plan activating specific MCPs.
-
-### **Step 2 — MCP Execution**
-
-Ordered execution (required by spec):
-
-1. Web Scrape
-2. (If success) SEO + Tech
-3. Optional: Reviews, Social, Careers, Ads
-
-### **Step 3 — Profile Merge**
-
-All MCP outputs are merged into a unified `CompanyOSINTProfile`.
-
-### **Step 4 — Report Synthesis**
-
-`llm_client.synthesize_report()` produces modular Markdown sections:
-
-* Web
-* SEO
-* Tech
-* Reviews
-* Social
-* Hiring
-* Ads
-* Recommendations
-
-If synthesis fails → required fallback text is returned.
-
----
-
-## **5. Deterministic LLM Abstraction**
-
-The LLM abstraction **does not call external APIs** in this version.
-It provides:
-
-* deterministic planning rules
-* deterministic synthesized Markdown
-
-This satisfies the hackathon rule: *LLM usage optional; dummy implementation acceptable*.
-
----
-
-## **6. Mini-App Frontend**
-
-A minimal browser interface allows:
-
-* entering a company URL
-* toggling demo mode
-* viewing Markdown intelligence reports
-
-The demo mode loads cached profiles from `demo_data/`.
-
----
-
-## **7. Key Technical Guarantees**
-
-### **✔ Zero randomness**
-
-### **✔ No time-based behavior**
-
-### **✔ All failures degrade gracefully**
-
-### **✔ All MCPs are stateless and sandbox-safe**
-
-### **✔ All Pydantic schemas match the machine spec exactly**
-
-### **✔ Entire system passes test suite and meta-tests**
-
-Everything aligns with the hackathon’s stability > cleverness philosophy.
-
----
-
-## **8. How to Run**
-
-### **MCP Microservices**
-
-```bash
-uvicorn mcp_web_scrape.server:app --port 9101
-uvicorn mcp_seo_probe.server:app --port 9102
-uvicorn mcp_tech_stack.server:app --port 9103
-uvicorn mcp_reviews_snapshot.server:app --port 9104
-uvicorn mcp_social_snapshot.server:app --port 9105
-uvicorn mcp_careers_intel.server:app --port 9106
-# ads MCP optional
-```
-
-### **Micro-Analyst Agent**
-
-```bash
-uvicorn agent.micro_analyst:app --port 8000
-```
-
-### **Web UI**
-
-Open:
-
-```
-miniapp/index.html
-```
-
----
-
-## **9. Demo Mode**
-
-Run:
-
-```bash
-# Example:
-python agent/micro_analyst.py
-```
-
-Then activate Demo Mode in the UI to load:
-
-* `blue_bottle.json`
-* `sweetgreen.json`
-* `glossier.json`
-
-All demo files load cleanly into `CompanyOSINTProfile`.
-
----
-
-## **10. Hackathon Criteria Checklist**
-
-| Requirement                      | Status |
-| -------------------------------- | ------ |
-| Modular A2A-style agent          | ✔      |
-| Uses MCP microservices           | ✔      |
-| Autonomous planning stage        | ✔      |
-| Fully deterministic execution    | ✔      |
-| Real-time actionable data        | ✔      |
-| Frontend for demonstration       | ✔      |
-| Demo data for offline mode       | ✔      |
-| Robust error handling            | ✔      |
-| Stateless MCPs                   | ✔      |
-| Clear deliverable for 2-min demo | ✔      |
-
----
-
-## **11. Key Features**
-
-This project is built exactly according to the hackathon’s **machine spec**, emphasizing:
-
-* reliability
-* deterministic reasoning
-* agent autonomy
-* modular design
-* clear UX
-
-It demonstrates a **full-stack autonomous intelligence system**: planning → sensing → reasoning → reporting.
-
-
-# Analyst Workspace
-
-This workspace contains the `micro_analyst_full_with_scripts` project.
-
-To run the development server using uvicorn:
+## Quick Start
 
 ```bash
 cd micro_analyst_full_with_scripts
-uvicorn agent.micro_analyst:app --reload --port 8000
-```# signal_analyst
 
+# Configure environment
+cp .env.example .env
+# Edit .env: set USE_OLLAMA_LLM=1 (local, free) or GOOGLE_API_KEY (cloud, paid)
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start MCPs (optional for full scraping)
+./run_all.sh
+
+# Start agent
+uvicorn agent.micro_analyst:app --port 8000
+```
+
+---
+
+## API Usage
+
+### Submit Analysis
+
+```bash
+curl -X POST http://localhost:8000/analyze \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your_api_key" \
+  -d '{"company_url": "https://example.com", "focus": "competitor intelligence"}'
+
+# Returns: {"job_id": "uuid", "status": "queued"}
+```
+
+### Poll Status
+
+```bash
+curl http://localhost:8000/jobs/{job_id} \
+  -H "X-API-Key: your_api_key"
+
+# Returns: {"status": "complete", "progress": 100, "result": {...}}
+```
+
+### Export PDF
+
+```bash
+curl http://localhost:8000/reports/{job_id}/pdf \
+  -H "X-API-Key: your_api_key" --output report.pdf
+```
+
+---
+
+## Features
+
+| Feature | Status |
+|---------|--------|
+| Real LLM synthesis (Gemini or Ollama) | ✅ |
+| Non-blocking execution | ✅ |
+| Job progress tracking (0-100%) | ✅ |
+| Partial failure propagation | ✅ |
+| API key authentication | ✅ |
+| SQLite report persistence | ✅ |
+| PDF export | ✅ (requires system deps) |
+| SSRF protection | ✅ |
+| Cross-user data isolation | ✅ |
+
+---
+
+## Configuration
+
+```bash
+# Local LLM (FREE - recommended for development)
+USE_OLLAMA_LLM=1
+OLLAMA_MODEL=gemma3:27b
+
+# Cloud LLM (PAID - ~$0.01-0.05/report)
+USE_GEMINI_LLM=1
+GOOGLE_API_KEY=your_key
+
+# Authentication
+ENABLE_AUTH=1
+VALID_API_KEYS=key1,key2,key3
+```
+
+---
+
+## Security
+
+### Implemented Protections
+
+| Protection | Description |
+|------------|-------------|
+| **SSRF Prevention** | Blocks localhost, private IPs, AWS metadata, cloud endpoints |
+| **API Key Auth** | Header-based authentication on all protected endpoints |
+| **Ownership Validation** | Users can only access their own jobs and reports |
+| **Empty Key Filter** | Prevents bypass via empty string in VALID_API_KEYS |
+| **Response Sanitization** | API keys never exposed in responses |
+
+### URL Validation
+
+The following are **blocked**:
+- `http://localhost:*`
+- `http://127.0.0.1:*`
+- `http://192.168.*.*` (private)
+- `http://10.*.*.*` (private)
+- `http://169.254.169.254` (AWS metadata)
+- `file://` scheme
+
+### Production Recommendations
+
+- Enable `ENABLE_AUTH=1` in production
+- Use HTTPS (reverse proxy with nginx/caddy)
+- Rotate API keys regularly
+- Set up database backups
+- Monitor for unusual usage patterns
+
+---
+
+## Report Modes
+
+| Mode | Focus String | Style |
+|------|-------------|-------|
+| Standard | (default) | Neutral consultant |
+| Red Team | `"red team"` | Adversarial OPFOR |
+| Narrative | `"narrative"` | Long-form prose |
+| Investor | `"investor"` | Metrics-driven PE |
+| Founder | `"founder"` | YC partner playbook |
+
+---
+
+## Architecture
+
+```
+Agent (port 8000)
+├── /analyze      → Background job, returns job_id
+├── /jobs/{id}    → Poll status (auth + ownership)
+└── /reports/pdf  → Export (auth + ownership)
+    │
+    ▼
+LLM Client (Ollama or Gemini)
+├── plan_tools()      → Which MCPs to call
+└── synthesize_report() → Generate insights
+    │
+    ▼
+MCP Services (ports 8001-8007)
+├── web_scrape    → HTML + metadata
+├── seo_probe     → SEO analysis
+├── tech_stack    → Framework detection
+├── reviews       → Sentiment analysis
+├── social        → Social presence
+├── careers       → Hiring signals
+└── ads           → Ad platform detection
+    │
+    ▼
+SQLite (reports.db)
+├── reports table → Full OSINT profiles
+└── usage table   → Per-key daily counts
+```
+
+---
+
+## Limitations (By Design)
+
+- Single-server only (no horizontal scaling)
+- In-memory job state (lost on restart)
+- No JavaScript rendering (static HTML only)
+- PDF requires system deps (`brew install pango cairo`)
+
+---
+
+## License
+
+Proprietary. Not for redistribution.
