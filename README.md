@@ -95,9 +95,27 @@ Signal Analyst is hardened for production deployment, moving beyond "toy" status
 
 ---
 
-## **5. API Interface**
+## **5. SaaS Cohort Mode (v1)**
 
-### **Initiate Research**
+Signal Analyst now supports **Cohort Analysis**, allowing you to move from individual target research to peer-group benchmarking. This mode uses a **Propose → Confirm → Execute** workflow to ensure discovery is both autonomous and auditable.
+
+### **How it Works**
+1.  **Anchor Discovery**: Input one company URL; the system extracts category terms and probes **G2** and **Web Search** for competitors.
+2.  **Explicit Confirmation**: The user reviews the proposed peer list and confirms which targets to analyze.
+3.  **Cross-Target Execution**: The system fans out existing single-URL probes to every target in the cohort.
+4.  **Signal Normalization (CMATRIX_001)**: Results are compressed into a boolean/categorical comparison matrix.
+
+### **Normalized signal matrix includes:**
+- **Tech Confidence**: High/Medium/Low/None fingerprinting strength.
+- **Pricing/Docs Visibility**: Detected via shallow semantic scraping.
+- **Hiring/Ads/Social Activity**: Transformed into binary presence signals.
+- **SEO Hygiene**: Good/Fair/Poor rating based on structural metadata.
+
+---
+
+## **6. API Interface**
+
+### **Single-URL Analysis**
 ```bash
 curl -X POST http://localhost:8000/analyze \
   -H "Content-Type: application/json" \
@@ -105,16 +123,37 @@ curl -X POST http://localhost:8000/analyze \
   -d '{"company_url": "https://glossier.com", "focus": "competitor tech stack analysis"}'
 ```
 
-### **Poll Status & Quota**
-```bash
-curl http://localhost:8000/jobs/{job_id} -H "X-API-Key: demo_key_abc123"
+### **SaaS Cohort Analysis**
+Cohort mode follows a 4-step sequence:
 
-# Response includes 'quota_remaining' to help clients manage usage.
+**1. Propose Cohort**
+```bash
+curl -X POST http://localhost:8000/cohorts/propose \
+  -H "X-API-Key: demo_key_abc123" \
+  -d '{"anchor_url": "https://linear.app", "category_hint": "project management"}'
+```
+
+**2. Confirm Targets**
+```bash
+curl -X POST http://localhost:8000/cohorts/{cohort_id}/confirm \
+  -H "X-API-Key: demo_key_abc123" \
+  -d '{"final_urls": ["url1", "url2"], "include_anchor": true}'
+```
+
+**3. Execute Fan-Out**
+```bash
+curl -X POST http://localhost:8000/cohorts/{cohort_id}/analyze \
+  -H "X-API-Key: demo_key_abc123"
+```
+
+**4. Retrieve Matrix & Report**
+```bash
+curl http://localhost:8000/cohorts/{cohort_id}/results -H "X-API-Key: demo_key_abc123"
 ```
 
 ---
 
-## **6. Report Modes**
+## **7. Report Modes**
 
 Signal Analyst can adopt different "Persona Filters" during synthesis:
 
@@ -128,11 +167,16 @@ Signal Analyst can adopt different "Persona Filters" during synthesis:
 
 ---
 
-## **7. Architecture Diagram**
+## **8. Architecture Diagram**
 
 ```mermaid
 graph TD
     User([User Request]) --> API[FastAPI Gateway]
+    API --> Cohort[Cohort Manager]
+    Cohort --> Discovery[G2 / Web Search Discovery]
+    Discovery --> UserConfirm[/User Confirmation/]
+    UserConfirm --> API
+    
     API --> JobQueue[(SQLite Job Store)]
     JobQueue --> LLMPlan[LLM Planning Stage]
     LLMPlan --> MCP_Swarm{MCP Swarm}
@@ -146,7 +190,7 @@ graph TD
     
     WS & SEO & TS & EXT --> INF[Interpretive Inference Engine]
     INF --> LLMSynth[LLM Synthesis]
-    LLMSynth --> FinalReport[Markdown / PDF Export]
+    LLMSynth --> FinalReport[Markdown / PDF Export / Matrix]
     FinalReport --> JobQueue
 ```
 
