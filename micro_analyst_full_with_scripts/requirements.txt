@@ -8,5 +8,6 @@ pydantic
 loguru
 tenacity
 google-generativeai
-beautifulsoup4
+weasyprint
+markdown
 
