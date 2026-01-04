@@ -83,24 +83,32 @@ OLLAMA_MODEL=gemma3:27b
 USE_GEMINI_LLM=1
 GOOGLE_API_KEY=your_key
 
-# Authentication
+# Authentication & Quotas
 ENABLE_AUTH=1
 VALID_API_KEYS=key1,key2,key3
+DAILY_QUOTA_PER_KEY=100
+MAX_REQUESTS_PER_MINUTE=10
+
+# Resource Limits
+JOB_TTL_SECONDS=3600
+MAX_JOBS_IN_MEMORY=500
 ```
 
 ---
 
-## Security
+## Security & Commercial Features
 
 ### Implemented Protections
 
 | Protection | Description |
 |------------|-------------|
+| **Rate Limiting** | Sliding window limit (default 10 req/min/key) |
+| **Quota Enforcement** | Daily reporting limits (default 100/day/key) |
+| **Job Persistence** | Jobs survive server restarts (SQLite backed) |
 | **SSRF Prevention** | Blocks localhost, private IPs, AWS metadata, cloud endpoints |
 | **API Key Auth** | Header-based authentication on all protected endpoints |
 | **Ownership Validation** | Users can only access their own jobs and reports |
-| **Empty Key Filter** | Prevents bypass via empty string in VALID_API_KEYS |
-| **Response Sanitization** | API keys never exposed in responses |
+| **Input Validation** | Strict length limits on all inputs to prevent memory attacks |
 
 ### URL Validation
 
@@ -115,6 +123,7 @@ The following are **blocked**:
 ### Production Recommendations
 
 - Enable `ENABLE_AUTH=1` in production
+- Set `DAILY_QUOTA_PER_KEY` based on your subscription tiers
 - Use HTTPS (reverse proxy with nginx/caddy)
 - Rotate API keys regularly
 - Set up database backups
