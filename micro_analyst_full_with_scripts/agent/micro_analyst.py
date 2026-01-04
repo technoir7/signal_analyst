@@ -115,7 +115,8 @@ jobs: Dict[str, Dict[str, Any]] = {}
 # ---------------------------------------------------------------------------
 # API key authentication
 # ---------------------------------------------------------------------------
-VALID_API_KEYS = set(os.getenv("VALID_API_KEYS", "").split(","))
+# Fix: Filter empty strings from API keys to prevent empty key bypass
+VALID_API_KEYS = set(k.strip() for k in os.getenv("VALID_API_KEYS", "").split(",") if k.strip())
 AUTH_ENABLED = bool(os.getenv("ENABLE_AUTH", "0") == "1")
 
 def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
@@ -125,6 +126,54 @@ def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
     if not x_api_key or x_api_key not in VALID_API_KEYS:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
     return x_api_key
+
+
+# ---------------------------------------------------------------------------
+# SSRF Protection: Validate URLs before scraping
+# ---------------------------------------------------------------------------
+import ipaddress
+from urllib.parse import urlparse
+
+def validate_company_url(url: str) -> bool:
+    """
+    Validate company_url to prevent SSRF attacks.
+    Blocks: localhost, private IPs, loopback, link-local, file:// schemes.
+    """
+    try:
+        parsed = urlparse(url)
+        
+        # Only allow http/https
+        if parsed.scheme not in ("http", "https"):
+            return False
+        
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        
+        # Block localhost variants
+        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+            return False
+        
+        # Block internal hostnames
+        if hostname.lower().endswith(".local") or hostname.lower().endswith(".internal"):
+            return False
+        
+        # Block private/internal IP ranges
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+        except ValueError:
+            # Not an IP address, hostname is acceptable
+            pass
+        
+        # Block cloud metadata endpoints
+        if hostname in ("169.254.169.254", "metadata.google.internal"):
+            return False
+        
+        return True
+    except Exception:
+        return False
 
 
 class AnalyzeRequest(BaseModel):
@@ -151,12 +200,33 @@ def _post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @app.get("/jobs/{job_id}")
-def get_job_status(job_id: str) -> Dict[str, Any]:
-    """Get status of a background analysis job."""
+def get_job_status(job_id: str, api_key: str = Header(None, alias="X-API-Key")) -> Dict[str, Any]:
+    """
+    Get status of a background analysis job.
+    Requires authentication and ownership validation.
+    """
+    # Verify API key if auth is enabled
+    if AUTH_ENABLED:
+        if not api_key or api_key not in VALID_API_KEYS:
+            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    
     job = jobs.get(job_id)
     if not job:
-        return {"status": "not_found", "error": "Job ID not found"}
-    return job
+        raise HTTPException(status_code=404, detail="Job ID not found")
+    
+    # Ownership validation: user can only access their own jobs
+    if AUTH_ENABLED and job.get("api_key") != api_key:
+        raise HTTPException(status_code=403, detail="Access denied: job belongs to another user")
+    
+    # Return job without exposing api_key
+    return {
+        "status": job.get("status"),
+        "progress": job.get("progress"),
+        "result": job.get("result"),
+        "error": job.get("error"),
+        "company_url": job.get("company_url"),
+        "company_name": job.get("company_name"),
+    }
 
 
 def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
@@ -394,6 +464,13 @@ def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks, api_key: str
         if not api_key or api_key not in VALID_API_KEYS:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
     
+    # SSRF protection: validate URL before processing
+    if not validate_company_url(req.company_url):
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid company_url: must be a public http/https URL (no localhost, internal IPs, or cloud metadata)"
+        )
+    
     job_id = str(uuid4())
     jobs[job_id] = {
         "status": "queued",
@@ -402,6 +479,7 @@ def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks, api_key: str
         "error": None,
         "company_url": req.company_url,
         "company_name": req.company_name,
+        "api_key": api_key or "no-auth",  # Store for ownership validation
     }
     
     background_tasks.add_task(_run_analysis_task, job_id, req, api_key or "no-auth")
@@ -432,9 +510,17 @@ def export_pdf(job_id: str, api_key: str = Header(None, alias="X-API-Key")) -> R
         if not job or job.get("status") != "complete":
             raise HTTPException(status_code=404, detail="Report not found or not yet complete")
         
+        # Ownership validation for in-memory jobs
+        if AUTH_ENABLED and job.get("api_key") != api_key:
+            raise HTTPException(status_code=403, detail="Access denied: report belongs to another user")
+        
         report_markdown = job["result"]["report_markdown"]
         company_name = job.get("company_name", "Company")
     else:
+        # Ownership validation for database reports
+        if AUTH_ENABLED and report.get("api_key") != api_key:
+            raise HTTPException(status_code=403, detail="Access denied: report belongs to another user")
+        
         report_markdown = report["report_markdown"]
         company_name = report.get("company_name", "Company")
     
