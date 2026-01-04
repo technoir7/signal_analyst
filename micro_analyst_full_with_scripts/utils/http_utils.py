@@ -22,9 +22,21 @@ def fetch_url_with_retry(url: str, timeout: int = 5, max_attempts: int = 3) -> O
         try:
             ua = random.choice(USER_AGENTS)
             logger.debug("HTTP fetch attempt {} for {} with UA: {}", attempt, url, ua[:50])
-            resp = requests.get(url, timeout=timeout, headers={
-                "User-Agent": ua
-            })
+            headers = {
+                "User-Agent": ua,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Referer": "https://www.google.com/",
+                "DNT": "1",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "cross-site",
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache",
+            }
+            # Increased timeout to 10s for slower sites / WAFs
+            resp = requests.get(url, timeout=10, headers=headers)
             if resp.status_code != 200:
                 last_error = f"HTTP {resp.status_code}"
                 continue

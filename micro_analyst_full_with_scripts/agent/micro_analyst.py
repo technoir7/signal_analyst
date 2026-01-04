@@ -585,8 +585,21 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
         
         jobs[job_id]["progress"] = 90
 
+from core.inference import InferenceEngine  # NEW
+
+# ... (inside _run_analysis_task) ...
+
         # 4) Synthesize final report
-        profile_dict = profile.model_dump()
+        # RAW profile (for logging/debugging if needed, but we proceed with Inference)
+        raw_profile_dict = profile.model_dump()
+        
+        # TRANSFORM: Run Interpretive Inference Layer
+        inference_engine = InferenceEngine()
+        inferred_profile = inference_engine.infer(raw_profile_dict)
+        
+        # We use the INFERRED profile for synthesis and persistence
+        profile_dict = inferred_profile.model_dump()
+        
         jobs[job_id]["progress"] = 95
         save_job(
             job_id=job_id,

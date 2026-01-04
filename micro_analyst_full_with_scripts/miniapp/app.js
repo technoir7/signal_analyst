@@ -686,10 +686,14 @@ form.addEventListener("submit", async (evt) => {
       // 1. Get API Key
       let apiKey = localStorage.getItem("signal_analyst_api_key");
       if (!apiKey) {
-        apiKey = prompt("Please enter your API Key for Signal Analyst:");
-        if (apiKey) localStorage.setItem("signal_analyst_api_key", apiKey);
+        apiKey = prompt("Enter API Key (or click OK to skip if Auth is disabled):");
+        if (apiKey) {
+          localStorage.setItem("signal_analyst_api_key", apiKey);
+        } else {
+          apiKey = "no_auth"; // Allow bypass
+        }
       }
-      if (!apiKey) throw new Error("API Key required for live analysis");
+      // if (!apiKey) throw new Error("API Key required for live analysis"); // Removed strict check
 
       // 2. Submit Job
       appendCotLine("system", "Submitting analysis job...");

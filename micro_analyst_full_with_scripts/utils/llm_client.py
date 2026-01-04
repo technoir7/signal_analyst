@@ -209,275 +209,64 @@ class LLMClient:
         red_team: bool = False,
     ) -> str:
         """
-        Structured, sectioned report.
-
-        When red_team=True, the language shifts into a more adversarial,
-        OPFOR-style read: "if I had to break this, here’s what I’d stare at first."
+        Structured, sectioned report using the Interpretive Inference Layer.
+        Now consumes SignalInference objects instead of raw data.
         """
-        web = profile_dict.get("web") or {}
-        seo = profile_dict.get("seo") or {}
-        tech = profile_dict.get("tech_stack") or {}
-        reviews = profile_dict.get("reviews") or {}
-        social = profile_dict.get("social") or {}
-        hiring = profile_dict.get("hiring") or {}
-        ads = profile_dict.get("ads") or {}
+        lines: list[str] = []
+        
+        section_keys = [
+            ("web", "1. Web Presence"),
+            ("seo", "2. SEO Diagnostics"),
+            ("tech_stack", "3. Tech Stack Fingerprint"),
+            ("reviews", "4. Customer Voice & Reviews"),
+            ("social", "5. Social Footprint"),
+            ("hiring", "6. Hiring & Org Signals"),
+            ("ads", "7. Ads & Growth Motions"),
+        ]
 
         def rt(normal: str, spicy: str) -> str:
-            """Return red-team copy when enabled, otherwise neutral."""
             return spicy if red_team else normal
 
-        lines: list[str] = []
+        for key, title in section_keys:
+            inf = profile_dict.get(key)
+            if not inf:
+                lines.append(f"## {title}\n\n*No inference data available.*\n\n")
+                continue
+            
+            # Logic: If raw data was error/absent, we use the strategic implication.
+            # If present, we also use the strategic implication but maybe format it differently?
+            # actually, the requirement is to ALWAYS use the inference.
+            
+            lines.append(f"## {title}\n\n")
+            
+            status_line = f"**Status**: {inf.get('data_status', 'detecting').upper()}"
+            conf_line = f"**Confidence**: {inf.get('confidence', 'medium').upper()}"
+            lines.append(f"{status_line} | {conf_line}\n\n")
+            
+            impl = inf.get("strategic_implication")
+            lines.append(f"{impl}\n\n")
+            
+            risk = inf.get("risk_note")
+            if risk:
+                lines.append(f"> [!NOTE]\n> **Risk Factor**: {risk}\n\n")
+                
+            if inf.get("data_status") != "present":
+                 causes = ", ".join(inf.get("plausible_causes") or [])
+                 if causes:
+                     lines.append(f"_Potential causes: {causes}_\n\n")
+        
+        # 8. Strategic Posture (Mandatory)
+        lines.append("## 8. Strategic Posture Summary\n\n")
+        posture = profile_dict.get("strategic_posture") or "System failed to synthesize posture."
+        lines.append(f"{posture}\n\n")
 
-        # 1. Web Presence
-        lines.append("## 1. Web Presence\n\n")
-        title = (web.get("meta") or {}).get("title") or "No title detected"
-        desc = (web.get("meta") or {}).get("description") or "No meta description detected"
-
-        lines.append(
-            rt(
-                f"- Landing page title: **{title}**\n"
-                f"- Meta description (how they introduce themselves to strangers): {desc}\n",
-                f"- First impression surface:\n"
-                f"  - **Title**: **{title}** — this is the line they’ve decided to shout into the void.\n"
-                f"  - **Meta description**: {desc}\n"
-                f"- This is the copy an adversary reads before anything else, because it’s the one line "
-                f"they bothered to polish for robots.\n",
-            )
-        )
-
-        if web.get("error"):
-            lines.append(
-                rt(
-                    f"- Web scrape error: `{web['error']}` (surface partially opaque).\n",
-                    f"- Web scrape error: `{web['error']}` — anytime an org’s own site resists basic inspection, "
-                    f"it’s either negligence or control-freakery. Both are exploitable.\n",
-                )
-            )
-
-        lines.append("\n")
-
-        # 2. SEO Diagnostics
-        lines.append("## 2. SEO Diagnostics\n\n")
-        if seo.get("error"):
-            lines.append(
-                rt(
-                    f"- SEO probe error: `{seo['error']}`.\n",
-                    f"- SEO probe error: `{seo['error']}` — their discoverability stack is either badly wired "
-                    "or actively misconfigured. Either way, it’s a blind spot.\n",
-                )
-            )
-        else:
-            meta_issues = seo.get("meta_issues") or []
-            heading_issues = seo.get("heading_issues") or []
-            if not meta_issues and not heading_issues:
-                lines.append(
-                    rt(
-                        "- No obvious on-page SEO issues detected.\n",
-                        "- No easy on-page SEO own-goals. Low-hanging fruit for attack won’t be metadata; "
-                        "you’ll have to look at the deeper plumbing.\n",
-                    )
-                )
-            else:
-                lines.append(
-                    rt(
-                        "- On-page SEO issues detected:\n",
-                        "- On-page structural missteps that widen the gap between how they think they’re found "
-                        "and how they actually show up:\n",
-                    )
-                )
-                for issue in meta_issues + heading_issues:
-                    lines.append(f"  - {issue}\n")
-
-        lines.append("\n")
-
-        # 3. Tech Stack Fingerprint
-        lines.append("## 3. Tech Stack Fingerprint\n\n")
-        if tech.get("error"):
-            lines.append(
-                rt(
-                    f"- Tech stack detection error: `{tech['error']}`.\n",
-                    f"- Tech stack detection error: `{tech['error']}` — partial visibility into the dependency graph. "
-                    "Ideal place to push if you want to test how brittle they are under imperfect observability.\n",
-                )
-            )
-        else:
-            frameworks = ", ".join(tech.get("frameworks") or []) or "None detected"
-            analytics = ", ".join(tech.get("analytics") or []) or "None detected"
-            cms = tech.get("cms") or "None detected"
-            cdn = tech.get("cdn") or "None detected"
-
-            lines.append(f"- Frameworks: {frameworks}\n")
-            lines.append(f"- Analytics: {analytics}\n")
-            lines.append(f"- CMS: {cms}\n")
-            lines.append(f"- CDN: {cdn}\n")
-
-            if red_team:
-                lines.append(
-                    "\n- Each named service is a third-party trust boundary and a potential failure mode. "
-                    "Every extra SaaS glued into the stack is another place they’re delegating both control "
-                    "and vulnerability management.\n"
-                )
-
-        lines.append("\n")
-
-        # 4. Customer Voice & Reviews
-        lines.append("## 4. Customer Voice & Reviews\n\n")
-        if reviews.get("error"):
-            lines.append(
-                rt(
-                    f"- Reviews snapshot error: `{reviews['error']}`.\n",
-                    f"- Reviews snapshot error: `{reviews['error']}` — either the signal is too thin to read, "
-                    "or they’ve managed to avoid leaving public scars. Both conditions require a different attack.\n",
-                )
-            )
-        else:
-            summary = reviews.get("summary") or "No synthesized reviews summary available."
-            lines.append(
-                rt(
-                    f"- Summary of customer sentiment: {summary}\n",
-                    f"- Condensed customer sentiment: {summary}\n"
-                    "- This is the discrepancy layer: the distance between how they talk about themselves and how "
-                    "people talk about them when they’re annoyed and unsupervised.\n",
-                )
-            )
-            complaints = reviews.get("top_complaints") or []
-            praises = reviews.get("top_praises") or []
-
-            if complaints:
-                lines.append(
-                    rt(
-                        "- Recurring complaints:\n",
-                        "- Recurring failure modes (things customers have already annotated for you):\n",
-                    )
-                )
-                for c in complaints:
-                    lines.append(f"  - {c}\n")
-
-            if praises:
-                lines.append("- Reliable strengths (things you’d be unwise to attack head-on):\n")
-                for p in praises:
-                    lines.append(f"  - {p}\n")
-
-        lines.append("\n")
-
-        # 5. Social Footprint
-        lines.append("## 5. Social Footprint\n\n")
-        if social.get("error"):
-            lines.append(
-                rt(
-                    f"- Social snapshot error: `{social['error']}`.\n",
-                    f"- Social snapshot error: `{social['error']}` — either they’re off-grid, or the crawl hit a wall. "
-                    "Silence is still a posture.\n",
-                )
-            )
-        else:
-            if not any(
-                social.get(k) for k in ["instagram", "youtube", "twitter", "tiktok"]
-            ):
-                lines.append(
-                    rt(
-                        "- No major social presence detected.\n",
-                        "- No significant social presence: either they don’t believe in narrative control, or they’ve "
-                        "outsourced it to channels you’re not seeing yet.\n",
-                    )
-                )
-            else:
-                lines.append(
-                    rt(
-                        "- Public channels detected and active.\n",
-                        "- Active public channels detected — these are live surfaces where they improvise, panic, and "
-                        "over-correct in real time.\n",
-                    )
-                )
-
-        lines.append("\n")
-
-        # 6. Hiring & Org Signals
-        lines.append("## 6. Hiring & Org Signals\n\n")
-        if hiring.get("error"):
-            lines.append(
-                rt(
-                    f"- Hiring intel error: `{hiring['error']}`.\n",
-                    f"- Hiring intel error: `{hiring['error']}` — their internal priorities aren’t visible through "
-                    "standard job pipelines. You’ll need other telemetry to infer where the org is actually pushing.\n",
-                )
-            )
-        else:
-            inferred = hiring.get("inferred_focus") or "No clear hiring theme inferred."
-            roles = hiring.get("open_roles") or []
-
-            lines.append(
-                rt(
-                    f"- Inferred hiring focus: {inferred}\n",
-                    f"- Inferred hiring focus: **{inferred}** — whatever they say in press releases, this is what "
-                    "they’re quietly paying for.\n",
-                )
-            )
-
-            if roles:
-                lines.append(
-                    rt(
-                        "- Representative open roles:\n",
-                        "- Representative open roles — where the headcount is actually moving:\n",
-                    )
-                )
-                for r in roles[:10]:
-                    title = r.get("title") or "Untitled role"
-                    lines.append(f"  - {title}\n")
-
-        lines.append("\n")
-
-        # 7. Ads & Growth Motions
-        lines.append("## 7. Ads & Growth Motions\n\n")
-        if ads.get("error"):
-            lines.append(
-                rt(
-                    f"- Ads snapshot error: `{ads['error']}`.\n",
-                    f"- Ads snapshot error: `{ads['error']}` — either they aren’t paying for attention, or they’re "
-                    "doing it in walled gardens you don’t have clean access to.\n",
-                )
-            )
-        else:
-            platforms = ", ".join(ads.get("platforms") or []) or "None detected"
-            themes = ", ".join(ads.get("themes") or []) or "No unified theme detected"
-
-            lines.append(f"- Paid media platforms: {platforms}\n")
-            lines.append(f"- Messaging themes: {themes}\n")
-
-            if red_team and platforms != "None detected":
-                lines.append(
-                    "- Every paid channel is both a spend hose and a narrative surface. "
-                    "Disrupting these hits both revenue and story at the same time.\n"
-                )
-
-        lines.append("\n")
-
-        # 8. Strategic Recommendations
-        lines.append("## 8. Strategic Recommendations\n\n")
+        # Add red team addendum if requested
         if red_team:
-            lines.append(
-                "- Map the full third-party dependency graph implied by the tech stack; every external service is a "
-                "potential leverage point or single point of failure.\n"
-            )
-            lines.append(
-                "- Exploit the gap between what the marketing surface promises and what reviews describe: that delta is "
-                "where trust erodes fastest.\n"
-            )
-        else:
-            lines.append(
-                "- Tighten on-page SEO metadata (titles, descriptions, headings) so the way you are found matches the "
-                "way you want to be read.\n"
-            )
-            lines.append(
-                "- Align marketing language with the actual words customers use in reviews to close the credibility gap.\n"
-            )
-            lines.append(
-                "- Rationalize the tech stack and analytics footprint to reduce complexity and improve observability.\n"
-            )
-            lines.append(
-                "- Use hiring and ads as explicit signals of strategy: if you’re paying for it or hiring for it, it "
-                "should be legible on the public surface.\n"
-            )
+             lines.append("## 9. Red Team Addendum\n\n")
+             lines.append(
+                 "- **Attack Surface**: The gaps identified above (Absent/Partial signals) are the primary entry points. "
+                 "Opacity is not security; it often masks negligence.\n"
+             )
 
         return "".join(lines)
 
@@ -993,7 +782,8 @@ class OllamaLLMClient(LLMClient):
         }
         
         try:
-            resp = requests.post(url, json=payload, timeout=120)
+            # Increased timeout to 300s (5 min) for 27b model synthesis on large contexts
+            resp = requests.post(url, json=payload, timeout=300)
             resp.raise_for_status()
             result = resp.json()
             return result.get("response", "")
@@ -1111,10 +901,16 @@ You are an OSINT intelligence analyst synthesizing a report.
 VOICE DIRECTIVE:
 {voice_block}
 
+CRITICAL DATA INSTRUCTION:
+You are provided with an **Inferred Intelligence Profile**. 
+- Each section contains a `strategic_implication` field. 
+- You MUST use this field as the ground truth. 
+- If `data_status` is 'absent' or 'error', rely on the `strategic_implication` to explain WHAT that absence means.
+- DO NOT say "data unavailable". Say what the absence suggests (e.g., "The absence of reviews suggests a B2B relationship-based sales motion").
+- The profile ends with a `strategic_posture` summary. You MUST include this insight in your conclusion or executive summary.
+
 Global rules:
 - ALWAYS stay in the chosen voice and perspective.
-- Ground your claims in the OSINT profile fields (web, seo, tech_stack, reviews, social, hiring, ads).
-- Do NOT repeat raw JSON; interpret it.
 - Output ONLY the report text (no JSON, no meta-commentary).
 
 Company OSINT profile (JSON):
