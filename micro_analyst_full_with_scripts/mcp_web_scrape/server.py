@@ -99,7 +99,7 @@ def run(payload: WebScrapeInput) -> WebScrapeOutput:
     logger.info("mcp_web_scrape: fetching %s", url_str)
 
     try:
-        raw_html = fetch_url_with_retry(url_str, timeout=5, max_attempts=2)
+        raw_html = fetch_url_with_retry(url_str, timeout=15, max_attempts=3)
         if raw_html is None:
             return WebScrapeOutput(
                 success=False,

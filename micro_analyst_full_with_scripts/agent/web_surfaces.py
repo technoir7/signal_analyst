@@ -59,13 +59,24 @@ def fetch_web_surfaces(
         result = post_json_fn(web_scrape_endpoint, payload)
 
         # Skip surfaces that return structured errors from MCP
-        if not isinstance(result, dict) or not result.get("ok", True):
+        # NOTE: MCP returns 'success' field, not 'ok'
+        if not isinstance(result, dict) or result.get("success") is False:
             logger.warning(
                 "web_scrape failed for %s: %s",
                 target_url,
-                result.get("error"),
+                result.get("error") if isinstance(result, dict) else "Non-dict response",
             )
             continue
+        
+        # Soft fail: HTML returned but too thin to be useful
+        html_content = result.get("raw_html", "") or ""
+        if len(html_content) < 500:
+            logger.warning(
+                "web_scrape for %s returned thin HTML (%d bytes); treating as low-surface",
+                target_url,
+                len(html_content),
+            )
+            # Still append, but downstream should be aware
 
         surfaces.append(
             {
