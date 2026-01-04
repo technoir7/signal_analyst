@@ -28,7 +28,7 @@ Unlike "dumb" scrapers, Signal Analyst begins with reasoning. The **LLM Planning
 The engine orchestrates a swarm of independent MCP services:
 *   **Web Scrape**: Extracts semantic metadata using browser-mimicking headers and rotating UAs.
 *   **SEO Probe**: Analyzes search visibility and structural hygiene.
-*   **Tech Stack**: Fingerprints frameworks and infrastructure.
+*   **Tech Stack**: Fingerprints frameworks and infrastructure by analyzing **raw HTML** (requires successful scrape to function; may be limited on bot-protected sites).
 *   **Reviews / Social / Hiring / Ads**: Signal collectors that feed the inference engine.
 
 ### **Phase C: Interpretive Inference (Core Intelligence)**
