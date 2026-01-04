@@ -106,6 +106,16 @@ def startup_event():
         count_recovered += 1
         
     logger.info(f"Recovery complete: {count_recovered} jobs loaded ({count_failed} marked as interrupted).")
+    logger.info("Backend ready at http://localhost:8000 — /health, /docs, /analyze available.")
+
+
+@app.get("/health")
+def health_check():
+    """
+    Simple health check endpoint for startup verification.
+    Returns 200 OK if the server is running.
+    """
+    return {"status": "ok", "service": "signal-analyst", "port": 8000}
 
 # ---------------------------------------------------------------------------
 # MCP endpoint URLs (used by tests via micro_analyst.MCP_... constants)
