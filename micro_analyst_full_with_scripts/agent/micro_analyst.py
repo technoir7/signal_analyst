@@ -12,6 +12,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from core.data_models import CompanyOSINTProfile
+from core.inference import InferenceEngine
 from core.merge_profiles import (
     merge_web_data,
     merge_seo_data,
@@ -470,9 +471,17 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
         # --- Tech stack -----------------------------------------------------------
         if plan.get("use_tech_stack"):
             try:
+                # EXTRACT raw_html from the profile for tech stack fingerprinting
+                raw_html_for_tech = ""
+                try:
+                    if hasattr(profile, "web") and profile.web:
+                         raw_html_for_tech = getattr(profile.web, "raw_html", "") or ""
+                except Exception:
+                    pass
+
                 tech_payload: Dict[str, Any] = {
                     "url": req.company_url,
-                    "text": web_text,
+                    "raw_html": raw_html_for_tech,
                 }
                 tech_result = _post_json(MCP_TECH_STACK_URL, tech_payload)
                 if tech_result.get("ok") is not False:
@@ -584,10 +593,6 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
 
         
         jobs[job_id]["progress"] = 90
-
-from core.inference import InferenceEngine  # NEW
-
-# ... (inside _run_analysis_task) ...
 
         # 4) Synthesize final report
         # RAW profile (for logging/debugging if needed, but we proceed with Inference)
