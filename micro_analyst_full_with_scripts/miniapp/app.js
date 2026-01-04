@@ -623,6 +623,7 @@ form.addEventListener("submit", async (evt) => {
   const reportStyle = reportStyleSelect.value;
   const demoMode = demoModeCheckbox.checked;
   const demoKey = demoDatasetSelect.value;
+  let startJobTime = 0; // Initialize start time tracker
 
   // Report style enrichments
   if (reportStyle === "red_team") {
@@ -692,6 +693,7 @@ form.addEventListener("submit", async (evt) => {
 
       // 2. Submit Job
       appendCotLine("system", "Submitting analysis job...");
+      startJobTime = performance.now(); // Start timing
       const startResp = await fetch(API_URL, {
         method: "POST",
         headers: {
@@ -767,7 +769,7 @@ form.addEventListener("submit", async (evt) => {
       );
     }
 
-    const elapsed = Math.round(performance.now() - startTime);
+    const elapsed = Math.round(performance.now() - (demoMode ? pipelineSimStart : startJobTime));
     if (latencyValue) latencyValue.textContent = `${elapsed} ms`;
 
     renderReport(data.report_markdown);

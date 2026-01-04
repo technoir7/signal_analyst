@@ -72,15 +72,15 @@ start_service () {
 
 # --- 5. Create initial session with agent -------------------------------------
 tmux new-session -d -s "$SESSION_NAME" -n "agent" \
-    "cd \"$PROJECT_ROOT\"; source .venv/bin/activate; echo '[tmux:agent] running micro_analyst on :8000'; uvicorn agent.micro_analyst:app --reload --port 8000"
+    "cd \"$PROJECT_ROOT\"; source .venv/bin/activate; echo '[tmux:agent] running micro_analyst on :8000'; uvicorn agent.micro_analyst:app --reload --port 8000 --host 127.0.0.1"
 
 # --- 6. MCP services in their own windows -------------------------------------
-start_service "web_scrape"   "uvicorn mcp_web_scrape.server:app --reload --port 8001"
-start_service "seo_probe"    "uvicorn mcp_seo_probe.server:app --reload --port 8002"
-start_service "tech_stack"   "uvicorn mcp_tech_stack.server:app --reload --port 8003"
-start_service "reviews"      "uvicorn mcp_reviews_snapshot.server:app --reload --port 8004"
-start_service "social"       "uvicorn mcp_social_snapshot.server:app --reload --port 8005"
-start_service "careers"      "uvicorn mcp_careers_intel.server:app --reload --port 8006"
+start_service "web_scrape"   "uvicorn mcp_web_scrape.server:app --reload --port 8001 --host 127.0.0.1"
+start_service "seo_probe"    "uvicorn mcp_seo_probe.server:app --reload --port 8002 --host 127.0.0.1"
+start_service "tech_stack"   "uvicorn mcp_tech_stack.server:app --reload --port 8003 --host 127.0.0.1"
+start_service "reviews"      "uvicorn mcp_reviews_snapshot.server:app --reload --port 8004 --host 127.0.0.1"
+start_service "social"       "uvicorn mcp_social_snapshot.server:app --reload --port 8005 --host 127.0.0.1"
+start_service "careers"      "uvicorn mcp_careers_intel.server:app --reload --port 8006 --host 127.0.0.1"
 
 # Kill the default extra window tmux sometimes creates
 tmux kill-window -t "$SESSION_NAME:0" 2>/dev/null || true

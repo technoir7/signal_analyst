@@ -47,10 +47,13 @@ logger.info(
 
 app = FastAPI(title="Micro Analyst Agent")
 
-# CORS for local UI / other tools
+# CORS configuration (Default to strict in prod, configurable via env)
+cors_origins_str = os.getenv("CORS_ORIGINS", "*")
+allow_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev: permissive
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,6 +67,44 @@ try:
     logger.info("Persistence layer initialized")
 except Exception as e:
     logger.error(f"Failed to initialize database: {e}")
+
+@app.on_event("startup")
+def startup_event():
+    """
+    Recover state from database on startup.
+    - Loads pending jobs.
+    - Marks 'running' jobs as failed (interrupted by restart).
+    - Populates in-memory jobs dict for continuity.
+    """
+    logger.info("Startup: Recovering pending jobs from database...")
+    pending = load_pending_jobs()
+    
+    count_recovered = 0
+    count_failed = 0
+    
+    for jid, job in pending.items():
+        # If job was running when server died, it's now failed
+        if job["status"] == "running":
+            job["status"] = "failed"
+            job["error"] = "Job interrupted by server restart."
+            # Update DB to reflect failure
+            save_job(
+                job_id=jid,
+                status="failed",
+                progress=job["progress"],
+                company_url=job["company_url"],
+                company_name=job["company_name"],
+                focus=job["focus"],
+                api_key=job["api_key"],
+                error=job["error"]
+            )
+            count_failed += 1
+        
+        # Load into memory so clients can still poll them
+        jobs[jid] = job
+        count_recovered += 1
+        
+    logger.info(f"Recovery complete: {count_recovered} jobs loaded ({count_failed} marked as interrupted).")
 
 # ---------------------------------------------------------------------------
 # MCP endpoint URLs (used by tests via micro_analyst.MCP_... constants)
@@ -122,7 +163,7 @@ jobs: Dict[str, Dict[str, Any]] = {}
 # ---------------------------------------------------------------------------
 # Fix: Filter empty strings from API keys to prevent empty key bypass
 VALID_API_KEYS = set(k.strip() for k in os.getenv("VALID_API_KEYS", "").split(",") if k.strip())
-AUTH_ENABLED = bool(os.getenv("ENABLE_AUTH", "0") == "1")
+AUTH_ENABLED = bool(os.getenv("ENABLE_AUTH", "1") == "1")
 
 def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
     """Verify API key if auth is enabled."""
@@ -290,6 +331,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
     try:
         jobs[job_id]["status"] = "running"
         jobs[job_id]["progress"] = 10
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=10,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
         logger.info(f"[Job {job_id}] Starting analysis for URL={req.company_url!r}")
 
         # 1) Initialize empty OSINT profile
@@ -298,6 +348,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
             url=req.company_url,
         )
         jobs[job_id]["progress"] = 20
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=20,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # 2) Planning step: decide which MCPs to call
         try:
@@ -313,6 +372,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
             plan = DEFAULT_TOOL_PLAN.copy()
         
         jobs[job_id]["progress"] = 30
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=30,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # 3) Execute MCPs according to plan (with failure resilience)
 
@@ -332,6 +400,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
                 # Continue with empty web data
         
         jobs[job_id]["progress"] = 40
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=40,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # For convenience, pull out the web text + meta we just merged
         web_text = ""
@@ -380,6 +457,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
                 logger.error(f"[Job {job_id}] SEO probe exception: {e}")
         
         jobs[job_id]["progress"] = 50
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=50,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # --- Tech stack -----------------------------------------------------------
         if plan.get("use_tech_stack"):
@@ -397,6 +483,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
                 logger.error(f"[Job {job_id}] Tech stack exception: {e}")
         
         jobs[job_id]["progress"] = 60
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=60,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # --- Reviews snapshot -----------------------------------------------------
         if plan.get("use_reviews_snapshot"):
@@ -411,6 +506,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
                 logger.error(f"[Job {job_id}] Reviews exception: {e}")
         
         jobs[job_id]["progress"] = 70
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=70,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # --- Social snapshot ------------------------------------------------------
         if plan.get("use_social_snapshot"):
@@ -425,6 +529,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
                 logger.error(f"[Job {job_id}] Social exception: {e}")
         
         jobs[job_id]["progress"] = 80
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=80,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # --- Careers intel --------------------------------------------------------
         if plan.get("use_careers_intel"):
@@ -439,6 +552,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
                 logger.error(f"[Job {job_id}] Careers exception: {e}")
         
         jobs[job_id]["progress"] = 85
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=85,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         # --- Ads snapshot ---------------------------------------------------------
         # --- Ads snapshot ---------------------------------------------------------
@@ -466,6 +588,15 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
         # 4) Synthesize final report
         profile_dict = profile.model_dump()
         jobs[job_id]["progress"] = 95
+        save_job(
+            job_id=job_id,
+            status="running",
+            progress=95,
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key
+        )
 
         try:
             report_markdown = llm_client.synthesize_report(
@@ -515,6 +646,16 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
         logger.exception(f"[Job {job_id}] Fatal error during analysis")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        save_job(
+            job_id=job_id,
+            status="failed",
+            progress=jobs[job_id]["progress"],
+            company_url=req.company_url,
+            company_name=req.company_name,
+            focus=req.focus,
+            api_key=api_key,
+            error=str(e)
+        )
 
 
 @app.post("/analyze")

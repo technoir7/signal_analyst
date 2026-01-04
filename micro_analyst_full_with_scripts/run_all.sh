@@ -35,7 +35,7 @@ start_service() {
     local port=$3
 
     echo -e "${GREEN}▶ Launching $name on port $port...${NC}"
-    uvicorn "$module":app --port "$port" --host 0.0.0.0 &
+    uvicorn "$module":app --port "$port" --host 127.0.0.1 &
     echo $! > "pid_$name"
 }
 

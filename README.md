@@ -4,8 +4,8 @@
 
 [![Core Engine](https://img.shields.io/badge/Core-FastAPI-blue)](https://fastapi.tiangolo.com/)
 [![LLM Layer](https://img.shields.io/badge/LLM-Gemini_/_Ollama-green)](https://ollama.com/)
-[![Resilience](https://img.shields.io/badge/Resilience-Job_Persistence-orange)](#persistence)
-[![Security](https://img.shields.io/badge/Security-SSRF_Protected-red)](#security)
+[![Status](https://img.shields.io/badge/Status-Internal_Prototype-yellow)](#)
+[![Security](https://img.shields.io/badge/Security-Auth_Enabled-green)](#security)
 
 ---
 
@@ -29,8 +29,8 @@ The engine orchestrates a swarm of independent MCP services:
 *   **Web Scrape**: Extracts semantic metadata and core messaging.
 *   **SEO Probe**: Analyzes search visibility and organic reach.
 *   **Tech Stack**: Fingerprints frameworks, libraries, and backend infrastructure.
-*   **Reviews & Social**: Triangulates external sentiment and public presence.
-*   **Careers & Ads**: Detects hiring signals and active promotional spend.
+*   **Reviews & Social**: `[STUB]` Architecture ready for external API integration.
+*   **Careers & Ads**: `[STUB]` Architecture ready for hiring signal integration.
 
 ### **Phase C: Expert Synthesis**
 Once the data is returned, an LLM (either a high-concurrency cloud model like Gemini or a privacy-first local instance like Gemma 3 via Ollama) sits as the "Analyst." It merges the raw JSON telemetry into a structured intelligence report, emphasizing tensions, opportunities, and risks.
@@ -63,13 +63,16 @@ uvicorn agent.micro_analyst:app --port 8000
 Signal Analyst is hardened for production deployment, moving beyond "toy" status with several critical safeguards:
 
 ### **Multi-Tenancy & Persistence**
-*   **Job Persistence**: Every analysis is treated as a stateful job stored in SQLite. If a worker crashes or the server reboots, the job history and pending statuses are preserved.
-*   **Quota Enforcement**: Built-in daily reporting limits per API key, allowing for tiered subscription modelling (e.g., Free vs. Pro tiers).
+*   **Report Persistence**: Completed analysis reports are stored in SQLite and survive restarts.
+*   **Job State Recovery**: In-flight jobs interrupted by a crash are detected on startup and marked as "failed" to prevent infinite queues.
+*   **Quota Enforcement**: Built-in daily reporting limits per API key (`DAILY_QUOTA_PER_KEY`).
 *   **Sliding Window Rate Limiting**: Prevents API abuse and infrastructure cost-runaway.
 
 ### **Security Hardening**
-*   **SSRF Protection**: Strict validation logic blocks attacks targeting `localhost`, private network IP ranges, or cloud provider metadata endpoints (AWS, GCP, Azure).
-*   **Ownership Validation**: Users can only access, poll, or export reports belonging to their specific API key.
+*   **Default Authentication**: API Key authentication enabled by default (`ENABLE_AUTH=1`).
+*   **Network Isolation**: MCP microservices bind to `127.0.0.1` to prevent external access.
+*   **SSRF Protection**: Strict validation logic blocks attacks at the `/analyze` gateway targeting `localhost` or cloud metadata.
+*   **Ownership Validation**: Users can only access reports belonging to their API key.
 *   **Input Sanitization**: Pydantic-enforced length limits on all metadata to prevent buffer overruns or memory-based attacks.
 
 ---
@@ -80,13 +83,13 @@ Signal Analyst is hardened for production deployment, moving beyond "toy" status
 ```bash
 curl -X POST http://localhost:8000/analyze \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_key" \
+  -H "X-API-Key: demo_key_abc123" \
   -d '{"company_url": "https://glossier.com", "focus": "competitor tech stack analysis"}'
 ```
 
 ### **Poll Status & Quota**
 ```bash
-curl http://localhost:8000/jobs/{job_id} -H "X-API-Key: your_key"
+curl http://localhost:8000/jobs/{job_id} -H "X-API-Key: demo_key_abc123"
 
 # Response includes 'quota_remaining' to help clients manage usage.
 ```
@@ -139,4 +142,6 @@ graph TD
 
 ## **License & Proprietary Notice**
 
-© 2026 SPEC_D. This system is proprietary and intended for internal intelligence operations and authorized subscription partners.
+- **Demo Mode**: The frontend includes a comprehensive `demo_data.js` simulator that mimics the API response for selected targets (Blue Bottle, Sweetgreen, Glossier) without needing the backend to be active.
+ 
+© 2026 SPEC_D. Internal Prototype - Not for Public Distribution.
