@@ -10,9 +10,18 @@ import sqlite3
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-import markdown
 from loguru import logger
-from weasyprint import HTML
+
+# Optional dependency - requires system libraries (pango, cairo, etc.)
+try:
+    import markdown
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except (ImportError, OSError) as e:
+    logger.warning(f"WeasyPrint not available (PDF export disabled): {e}")
+    WEASYPRINT_AVAILABLE = False
+    HTML = None  # type: ignore
+    markdown = None  # type: ignore
 
 
 DB_PATH = os.getenv("REPORTS_DB_PATH", "./reports.db")
@@ -146,6 +155,12 @@ def increment_usage(api_key: str) -> None:
 
 def markdown_to_pdf(markdown_text: str, company_name: str = "Company") -> bytes:
     """Convert Markdown report to PDF bytes."""
+    if not WEASYPRINT_AVAILABLE:
+        raise RuntimeError(
+            "PDF export requires weasyprint and system dependencies (pango, cairo). "
+            "Install with: brew install pango cairo && pip install weasyprint"
+        )
+    
     try:
         # Convert markdown to HTML
         html_content = markdown.markdown(

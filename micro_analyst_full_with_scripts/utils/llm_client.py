@@ -943,18 +943,226 @@ User focus / priorities:
         return text
 
 
+class OllamaLLMClient(LLMClient):
+    """
+    Local LLM client using Ollama for development and testing.
+    
+    Avoids API costs by using locally-hosted models.
+    
+    Environment variables:
+    - USE_OLLAMA_LLM: Set to "1" to enable
+    - OLLAMA_MODEL: Model name (default: gemma3:27b)
+    - OLLAMA_BASE_URL: Ollama API URL (default: http://localhost:11434)
+    """
+    
+    def __init__(self) -> None:
+        super().__init__()
+        
+        raw_flag = os.getenv("USE_OLLAMA_LLM", "0")
+        self._enabled = raw_flag in {"1", "true", "True"}
+        
+        if not self._enabled:
+            logger.info("OllamaLLMClient: USE_OLLAMA_LLM not enabled; using deterministic behavior.")
+            return
+        
+        self.model_name = os.getenv("OLLAMA_MODEL", "gemma3:27b")
+        self.base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        
+        try:
+            self.temperature = float(os.getenv("OLLAMA_TEMPERATURE", "0.1"))
+        except ValueError:
+            self.temperature = 0.1
+        
+        logger.info(
+            f"OllamaLLMClient enabled with model={self.model_name}, "
+            f"base_url={self.base_url}, temperature={self.temperature}"
+        )
+    
+    def _call_ollama(self, prompt: str) -> Optional[str]:
+        """Make a request to the Ollama API."""
+        import requests
+        
+        url = f"{self.base_url}/api/generate"
+        payload = {
+            "model": self.model_name,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": self.temperature
+            }
+        }
+        
+        try:
+            resp = requests.post(url, json=payload, timeout=120)
+            resp.raise_for_status()
+            result = resp.json()
+            return result.get("response", "")
+        except Exception as e:
+            logger.error(f"OllamaLLMClient: API error: {e}")
+            return None
+    
+    def plan_tools(
+        self,
+        company_name: Optional[str],
+        company_url: Optional[str],
+        focus: Optional[str],
+    ) -> Dict[str, bool]:
+        if not self._enabled:
+            return super().plan_tools(company_name, company_url, focus)
+        
+        if not company_url and not (focus or "").strip():
+            return self._empty_plan()
+        
+        prompt = (
+            "You are the planning LLM for Micro-Analyst, an OSINT intelligence system.\n"
+            "Decide which MCP tools to call for this analysis.\n\n"
+            f"Company name: {company_name or 'Unknown'}\n"
+            f"Company URL: {company_url or 'None'}\n"
+            f"User focus / priorities: {focus or 'None provided'}\n\n"
+            "Return ONLY a JSON object with these boolean keys:\n"
+            "  use_web_scrape,\n"
+            "  use_seo_probe,\n"
+            "  use_tech_stack,\n"
+            "  use_reviews_snapshot,\n"
+            "  use_social_snapshot,\n"
+            "  use_careers_intel,\n"
+            "  use_ads_snapshot.\n"
+            "Example:\n"
+            "{\n"
+            '  "use_web_scrape": true,\n'
+            '  "use_seo_probe": true,\n'
+            '  "use_tech_stack": true,\n'
+            '  "use_reviews_snapshot": false,\n'
+            '  "use_social_snapshot": false,\n'
+            '  "use_careers_intel": true,\n'
+            '  "use_ads_snapshot": false\n'
+            "}\n"
+            "Return ONLY the JSON, no other text."
+        )
+        
+        text = self._call_ollama(prompt)
+        if not text:
+            logger.warning("OllamaLLMClient.plan_tools: empty response, falling back to deterministic.")
+            return super().plan_tools(company_name, company_url, focus)
+        
+        plan = GeminiLLMClient._parse_plan_json(text)
+        if plan is None:
+            logger.warning("OllamaLLMClient.plan_tools: could not parse JSON, falling back to deterministic.")
+            return super().plan_tools(company_name, company_url, focus)
+        
+        return plan
+    
+    def synthesize_report(self, profile_dict: Dict[str, Any], focus: Optional[str]) -> str:
+        if not self._enabled:
+            return super().synthesize_report(profile_dict, focus)
+        
+        # Detect voice mode
+        style = "standard"
+        lf = (focus or "").lower()
+        
+        if "red team" in lf or "opfor" in lf or "adversarial" in lf:
+            style = "red_team"
+        elif "narrative" in lf or "article" in lf or "essay" in lf:
+            style = "narrative"
+        elif "investor" in lf:
+            style = "investor"
+        elif "founder" in lf or "playbook" in lf:
+            style = "founder"
+        
+        # Voice-specific instructions
+        if style == "red_team":
+            voice_block = """
+You are an OPFOR red-team strategist writing for another attacker.
+Goal: Design a realistic, OSINT-grounded plan for how to break or seriously damage this company.
+Required structure:
+1. Start with a short "Vulnerability Overview" (2–4 sentences).
+2. Then add "Primary Attack Paths" with a numbered list.
+3. Add "Campaign Design" explaining how to sequence attacks.
+4. End with "Most Exploitable Asymmetry".
+Tone: Write from attacker POV. Clinical, hostile, unsentimental.
+"""
+        elif style == "narrative":
+            voice_block = """
+Write as a senior strategy analyst for smart operators (FT/Economist style).
+Analytical, concrete, mildly opinionated. NO poetic metaphors.
+Ground every claim in OSINT evidence. Use smooth prose, not bullets.
+"""
+        elif style == "investor":
+            voice_block = """
+Write as a hard-nosed private equity analyst.
+Terse, metrics-driven, skeptical.
+Focus on: market position, unit economics, scalability, margin threats, execution risk.
+"""
+        elif style == "founder":
+            voice_block = """
+Write like a YC partner reviewing a company.
+Blunt, strategic, leverage-focused.
+Provide a clear 90-180 day strategic blueprint.
+"""
+        else:
+            voice_block = """
+Write a standard OSINT intelligence brief with neutral tone.
+Use short paragraphs, structured by surface: Web / SEO / Tech / Reviews / Social / Hiring / Ads / Strategy.
+"""
+        
+        prompt = f"""
+You are an OSINT intelligence analyst synthesizing a report.
+
+VOICE DIRECTIVE:
+{voice_block}
+
+Global rules:
+- ALWAYS stay in the chosen voice and perspective.
+- Ground your claims in the OSINT profile fields (web, seo, tech_stack, reviews, social, hiring, ads).
+- Do NOT repeat raw JSON; interpret it.
+- Output ONLY the report text (no JSON, no meta-commentary).
+
+Company OSINT profile (JSON):
+{json.dumps(profile_dict, ensure_ascii=False, indent=2)}
+
+User focus / priorities:
+{focus or "None provided"}
+
+Generate the report now:
+"""
+        
+        text = self._call_ollama(prompt)
+        if not text:
+            logger.warning("OllamaLLMClient.synthesize_report: empty response, falling back to deterministic.")
+            return super().synthesize_report(profile_dict, focus)
+        
+        return text.strip()
+
+
 def get_llm_client() -> LLMClient:
     """
-    Factory: prefer GeminiLLMClient, but always guarantee *some* client.
-
-    - If USE_GEMINI_LLM=1 and GOOGLE_API_KEY + google-generativeai
-      are available -> GeminiLLMClient
-    - Otherwise -> base deterministic LLMClient
+    Factory: returns the appropriate LLM client based on environment configuration.
+    
+    Priority order (first enabled wins):
+    1. USE_OLLAMA_LLM=1 -> OllamaLLMClient (local, free)
+    2. USE_GEMINI_LLM=1 -> GeminiLLMClient (cloud, paid API)
+    3. Neither -> base deterministic LLMClient
+    
+    This prioritizes local Ollama to avoid accidental API costs during development.
     """
-    try:
-        client = GeminiLLMClient()
-        # If Gemini isn't really enabled internally, it just behaves like LLMClient.
-        return client
-    except Exception as e:  # pragma: no cover - defensive
-        logger.error(f"get_llm_client: failed to init GeminiLLMClient: {e}")
-        return LLMClient()
+    # Check Ollama first (local, free)
+    if os.getenv("USE_OLLAMA_LLM", "0") in {"1", "true", "True"}:
+        try:
+            client = OllamaLLMClient()
+            logger.info("get_llm_client: Using OllamaLLMClient (local)")
+            return client
+        except Exception as e:
+            logger.error(f"get_llm_client: Failed to init OllamaLLMClient: {e}")
+    
+    # Check Gemini second (cloud, paid)
+    if os.getenv("USE_GEMINI_LLM", "0") in {"1", "true", "True"}:
+        try:
+            client = GeminiLLMClient()
+            logger.info("get_llm_client: Using GeminiLLMClient (cloud)")
+            return client
+        except Exception as e:
+            logger.error(f"get_llm_client: Failed to init GeminiLLMClient: {e}")
+    
+    # Fallback to deterministic
+    logger.info("get_llm_client: Using deterministic LLMClient (no external LLM)")
+    return LLMClient()
