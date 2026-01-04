@@ -655,11 +655,11 @@ form.addEventListener("submit", async (evt) => {
   appendCotLine(
     "plan",
     "Enabled tools → " +
-      Object.entries(plan)
-        .filter(([, v]) => v)
-        .map(([k]) => planToLabel({ [k]: true }))
-        .filter(Boolean)
-        .join(" · ")
+    Object.entries(plan)
+      .filter(([, v]) => v)
+      .map(([k]) => planToLabel({ [k]: true }))
+      .filter(Boolean)
+      .join(" · ")
   );
 
   setStatus("running", demoMode ? "Loading demo…" : "Dispatching agent API…");
@@ -668,22 +668,36 @@ form.addEventListener("submit", async (evt) => {
   setLoadingState(true);
   if (modeValue) modeValue.textContent = demoMode ? "DEMO" : "LIVE";
 
-  startPipelineSimulation(plan);
-  const startTime = performance.now();
-
   try {
     let data;
 
     if (demoMode) {
+      // DEMO MODE: Keep existing simulation
+      startPipelineSimulation(plan);
       data = await loadDemoProfile(demoKey);
       appendCotLine(
         "mcp",
         `Loaded demo profile: ${data.profile.company.name} (${data.profile.company.url})`
       );
     } else {
-      const resp = await fetch(API_URL, {
+      // LIVE MODE: Real Async Polling
+
+      // 1. Get API Key
+      let apiKey = localStorage.getItem("signal_analyst_api_key");
+      if (!apiKey) {
+        apiKey = prompt("Please enter your API Key for Signal Analyst:");
+        if (apiKey) localStorage.setItem("signal_analyst_api_key", apiKey);
+      }
+      if (!apiKey) throw new Error("API Key required for live analysis");
+
+      // 2. Submit Job
+      appendCotLine("system", "Submitting analysis job...");
+      const startResp = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey
+        },
         body: JSON.stringify({
           company_name: companyName || null,
           company_url: companyUrl || "",
@@ -692,9 +706,55 @@ form.addEventListener("submit", async (evt) => {
         }),
       });
 
-      if (!resp.ok) throw new Error(`Agent API returned ${resp.status}`);
-      data = await resp.json();
-      appendCotLine("synth", "Agent returned OSINT profile + report.");
+      if (!startResp.ok) {
+        if (startResp.status === 401) {
+          localStorage.removeItem("signal_analyst_api_key");
+          throw new Error("Invalid API Key. Please try again.");
+        }
+        throw new Error(`Agent API returned ${startResp.status}`);
+      }
+
+      const { job_id } = await startResp.json();
+      appendCotLine("system", `Job started: ${job_id}`);
+
+      // 3. Poll Job Status
+      setPipelineRunning(true);
+      setAgentPulseState("active", "Job queued...");
+
+      let job = { status: "queued", progress: 0 };
+
+      while (true) {
+        const pollResp = await fetch(`http://localhost:8000/jobs/${job_id}`, {
+          headers: { "X-API-Key": apiKey }
+        });
+
+        if (!pollResp.ok) throw new Error(`Polling failed: ${pollResp.status}`);
+        job = await pollResp.json();
+
+        // Update UI with real progress
+        if (pipelineProgressEl) pipelineProgressEl.style.width = `${job.progress}%`;
+
+        // Map backend progress to stages for UI highlighting
+        let stageName = "scrape";
+        if (job.progress > 20) stageName = "seo";
+        if (job.progress > 50) stageName = "tech";
+        if (job.progress > 80) stageName = "synthesis";
+        setPipelineStage(stageName);
+
+        setAgentPulseState("active", `Analyzing... ${job.progress}%`);
+        if (job.status === "running") {
+          // Keep polling
+        } else if (job.status === "complete") {
+          data = job.result;
+          break;
+        } else if (job.status === "failed") {
+          throw new Error(job.error || "Job failed on server");
+        }
+
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      appendCotLine("synth", "Job complete. Rendering report.");
     }
 
     // REAL TOOL USAGE APPLIED HERE:
@@ -724,7 +784,7 @@ form.addEventListener("submit", async (evt) => {
     setReportStatus("error", "Error");
     appendCotLine(
       "error",
-      "Failure during analysis. Check backend logs or FastAPI trace."
+      "Failure during analysis: " + err.message
     );
     finishAnalysisUI(false);
   } finally {
