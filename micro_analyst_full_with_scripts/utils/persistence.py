@@ -72,6 +72,24 @@ def init_db() -> None:
         )
     """)
     
+    # Cohorts table (for SaaS cohort mode)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cohorts (
+            cohort_id TEXT PRIMARY KEY,
+            anchor_url TEXT NOT NULL,
+            category_hint TEXT,
+            status TEXT DEFAULT 'proposed',
+            created_at REAL,
+            updated_at REAL,
+            candidates_json TEXT,
+            confirmed_urls_json TEXT,
+            job_ids_json TEXT,
+            matrix_json TEXT,
+            report_md TEXT,
+            api_key TEXT
+        )
+    """)
+    
     conn.commit()
     conn.close()
     logger.info(f"Database initialized at {DB_PATH}")
@@ -331,6 +349,119 @@ def delete_job(job_id: str) -> None:
         conn.close()
     except Exception as e:
         logger.error(f"Failed to delete job {job_id}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Cohort Persistence (for SaaS cohort mode)
+# ---------------------------------------------------------------------------
+
+def save_cohort(
+    cohort_id: str,
+    anchor_url: str,
+    category_hint: Optional[str],
+    status: str,
+    candidates: Optional[list] = None,
+    confirmed_urls: Optional[list] = None,
+    job_ids: Optional[list] = None,
+    matrix: Optional[Dict[str, Any]] = None,
+    report_md: Optional[str] = None,
+    api_key: Optional[str] = None
+) -> None:
+    """Save or update a cohort in the database."""
+    try:
+        import time
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        now = time.time()
+        
+        cursor.execute(
+            """
+            INSERT INTO cohorts (cohort_id, anchor_url, category_hint, status, created_at, updated_at,
+                                candidates_json, confirmed_urls_json, job_ids_json, matrix_json, report_md, api_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(cohort_id) DO UPDATE SET
+                status = excluded.status,
+                updated_at = excluded.updated_at,
+                candidates_json = COALESCE(excluded.candidates_json, cohorts.candidates_json),
+                confirmed_urls_json = COALESCE(excluded.confirmed_urls_json, cohorts.confirmed_urls_json),
+                job_ids_json = COALESCE(excluded.job_ids_json, cohorts.job_ids_json),
+                matrix_json = COALESCE(excluded.matrix_json, cohorts.matrix_json),
+                report_md = COALESCE(excluded.report_md, cohorts.report_md)
+            """,
+            (
+                cohort_id,
+                anchor_url,
+                category_hint,
+                status,
+                now,
+                now,
+                json.dumps(candidates) if candidates else None,
+                json.dumps(confirmed_urls) if confirmed_urls else None,
+                json.dumps(job_ids) if job_ids else None,
+                json.dumps(matrix) if matrix else None,
+                report_md,
+                api_key
+            )
+        )
+        
+        conn.commit()
+        conn.close()
+        logger.info(f"Cohort {cohort_id} saved to database (status={status})")
+    except Exception as e:
+        logger.error(f"Failed to save cohort {cohort_id}: {e}")
+
+
+def get_cohort(cohort_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve a cohort from the database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM cohorts WHERE cohort_id = ?", (cohort_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                "cohort_id": row["cohort_id"],
+                "anchor_url": row["anchor_url"],
+                "category_hint": row["category_hint"],
+                "status": row["status"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "candidates": json.loads(row["candidates_json"]) if row["candidates_json"] else [],
+                "confirmed_urls": json.loads(row["confirmed_urls_json"]) if row["confirmed_urls_json"] else [],
+                "job_ids": json.loads(row["job_ids_json"]) if row["job_ids_json"] else [],
+                "matrix": json.loads(row["matrix_json"]) if row["matrix_json"] else None,
+                "report_md": row["report_md"],
+                "api_key": row["api_key"],
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Failed to retrieve cohort {cohort_id}: {e}")
+        return None
+
+
+def update_cohort_status(cohort_id: str, status: str) -> None:
+    """Update only the status of a cohort."""
+    try:
+        import time
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "UPDATE cohorts SET status = ?, updated_at = ? WHERE cohort_id = ?",
+            (status, time.time(), cohort_id)
+        )
+        
+        conn.commit()
+        conn.close()
+        logger.info(f"Cohort {cohort_id} status updated to {status}")
+    except Exception as e:
+        logger.error(f"Failed to update cohort status {cohort_id}: {e}")
 
 
 def markdown_to_pdf(markdown_text: str, company_name: str = "Company") -> bytes:

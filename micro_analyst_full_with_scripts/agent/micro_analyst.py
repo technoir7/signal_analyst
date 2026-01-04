@@ -69,6 +69,12 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize database: {e}")
 
+# ---------------------------------------------------------------------------
+# Include Cohort Mode Router
+# ---------------------------------------------------------------------------
+from agent.cohort_endpoints import router as cohort_router
+app.include_router(cohort_router, prefix="/cohorts")
+
 @app.on_event("startup")
 def startup_event():
     """
