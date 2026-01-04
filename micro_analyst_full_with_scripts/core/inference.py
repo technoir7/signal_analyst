@@ -141,33 +141,80 @@ class InferenceEngine:
         )
 
     def _infer_tech(self, data: Dict[str, Any]) -> SignalInference:
-        error = data.get("error")
-        frameworks = data.get("frameworks") or []
-        analytics = data.get("analytics") or []
+        # Probabilistic fields from upgraded MCP
+        confidence = data.get("confidence", "none")
+        detected_fw = data.get("detected_framework")
+        detected_cms = data.get("detected_cms")
+        probable_fw = data.get("probable_framework")
+        probable_cms = data.get("probable_cms")
+        evidence = data.get("evidence") or []
+        absence_interp = data.get("absence_interpretation")
+        limitations = data.get("limitations") or []
+        
+        # Fallback for legacy data (if MCP hasn't run or is old version)
+        legacy_frameworks = data.get("frameworks") or []
+        
+        # Backwards compatibility: If legacy frameworks exist but confidence is "none", 
+        # assume it came from an older MCP version that only returned successes.
+        if confidence == "none" and legacy_frameworks:
+            confidence = "high"
 
-        if error or (not frameworks and not analytics):
+        # 1. NO DETECTION (Confidence: None)
+        if confidence == "none":
+            # Use specific absence interpretation if available, otherwise generic
+            reason = absence_interp or "No identifiable framework markers found in HTML."
+            
             return SignalInference(
                 section="Tech Stack",
                 data_status="absent",
-                confidence="medium",
-                plausible_causes=["Custom/Legacy stack", "Obfuscation", "Static site generation"],
+                confidence="none",  # Explicitly none
+                plausible_causes=limitations if limitations else ["Heavily cached", "Static HTML", "Custom"],
                 strategic_implication=(
-                    "The technology stack is opaque to standard fingerprinting. "
-                    "This often correlates with legacy enterprise systems or high-security custom builds "
-                    "rather than modern off-the-shelf SaaS composability."
+                    f"The technology stack is indeterminate based on public signals. {reason} "
+                    "Infrastructure complexity and maintenance burden cannot be assessed."
                 ),
-                risk_note="Reliance on custom infrastructure may increase maintenance overhead."
+                risk_note="Opacity prevents assessing maintenance risks or infrastructure capability."
             )
 
-        tech_summary = ", ".join(frameworks[:3])
+        # 2. PROBABLE / LOW CONFIDENCE
+        if confidence in ("low", "medium"):
+            signals = [s for s in [probable_fw, probable_cms] if s]
+            if not signals and legacy_frameworks: # partial fallback
+                 signals = legacy_frameworks[:2]
+
+            # specific evidence list
+            ev_str = "; ".join(evidence[:2]) if evidence else "weak signals"
+            
+            return SignalInference(
+                section="Tech Stack",
+                data_status="partial",
+                confidence="low",
+                plausible_causes=["Non-standard implementation", "Obfuscated headers"],
+                strategic_implication=(
+                    f"Traces suggest a likely reliance on {', '.join(signals) or 'unidentified text-based signals'}. "
+                    f"Evidence is present ({ev_str}) but lacks canonical authority. "
+                    "This suggests a custom implementation or a headless architecture."
+                ),
+                risk_note="Tech identification is tentative; verify before making integration decisions."
+            )
+
+        # 3. HIGH CONFIDENCE (Strong Detection)
+        # Use detected fields if present, otherwise fall back to legacy list (backward compat)
+        stack = [s for s in [detected_fw, detected_cms] if s]
+        if not stack and legacy_frameworks:
+            stack = legacy_frameworks[:2]
+            
+        stack_str = ", ".join(stack)
+        
         return SignalInference(
             section="Tech Stack",
             data_status="present",
             confidence="high",
-            plausible_causes=["Modern SaaS composability", "Cloud-native architecture"],
+            plausible_causes=["Modern SaaS composability", "Standard CMS deployment"],
             strategic_implication=(
-                f"The stack ({tech_summary}) indicates a modern, composable architecture. "
-                "The organization buys rather than builds for commodity layers, favoring speed and agility over total control."
+                f"Confirmed core infrastructure: {stack_str}. "
+                "The organization relies on established, standard tooling, allowing for "
+                "predictable talent sourcing and easier third-party integrations."
             )
         )
 
