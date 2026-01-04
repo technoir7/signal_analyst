@@ -1,5 +1,7 @@
 import os
-from typing import Optional, Dict, Any
+from collections import defaultdict
+from time import time
+from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
 import requests
@@ -7,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.data_models import CompanyOSINTProfile
 from core.merge_profiles import (
@@ -21,7 +23,10 @@ from core.merge_profiles import (
 )
 from utils.llm_client import LLMClient, get_llm_client
 from agent.web_surfaces import fetch_web_surfaces, aggregate_web_surfaces
-from utils.persistence import init_db, save_report, get_report, increment_usage, markdown_to_pdf
+from utils.persistence import (
+    init_db, save_report, get_report, increment_usage, markdown_to_pdf,
+    check_quota, save_job, get_job_db, load_pending_jobs, DAILY_QUOTA_PER_KEY
+)
 from fastapi.responses import Response
 
 # ---------------------------------------------------------------------------
@@ -129,6 +134,45 @@ def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Rate Limiting (per API key)
+# ---------------------------------------------------------------------------
+MAX_REQUESTS_PER_MINUTE = int(os.getenv("MAX_REQUESTS_PER_MINUTE", "10"))
+rate_limits: Dict[str, List[float]] = defaultdict(list)
+
+def check_rate_limit(api_key: str) -> bool:
+    """
+    Sliding window rate limiter.
+    Returns True if request allowed, False if rate limited.
+    """
+    now = time()
+    # Clean old entries
+    window = [t for t in rate_limits[api_key] if now - t < 60]
+    if len(window) >= MAX_REQUESTS_PER_MINUTE:
+        return False
+    rate_limits[api_key] = window + [now]
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Job Cleanup (TTL and max jobs)
+# ---------------------------------------------------------------------------
+JOB_TTL_SECONDS = int(os.getenv("JOB_TTL_SECONDS", "3600"))  # 1 hour default
+MAX_JOBS_IN_MEMORY = int(os.getenv("MAX_JOBS_IN_MEMORY", "500"))
+
+def cleanup_old_jobs() -> int:
+    """
+    Remove expired jobs from memory.
+    Returns number of jobs removed.
+    """
+    now = time()
+    expired = [jid for jid, job in jobs.items() 
+               if now - job.get("created_at", now) > JOB_TTL_SECONDS]
+    for jid in expired:
+        del jobs[jid]
+    return len(expired)
+
+
+# ---------------------------------------------------------------------------
 # SSRF Protection: Validate URLs before scraping
 # ---------------------------------------------------------------------------
 import ipaddress
@@ -177,9 +221,10 @@ def validate_company_url(url: str) -> bool:
 
 
 class AnalyzeRequest(BaseModel):
-    company_name: Optional[str] = None
-    company_url: str
-    focus: Optional[str] = None
+    """Request model with input validation limits."""
+    company_name: Optional[str] = Field(None, max_length=500)
+    company_url: str = Field(..., max_length=2048)
+    focus: Optional[str] = Field(None, max_length=2000)
 
 
 # ---------------------------------------------------------------------------
@@ -204,18 +249,27 @@ def get_job_status(job_id: str, api_key: str = Header(None, alias="X-API-Key")) 
     """
     Get status of a background analysis job.
     Requires authentication and ownership validation.
+    Falls back to database if job not in memory (for restart survival).
     """
     # Verify API key if auth is enabled
+    effective_key = api_key or "no-auth"
     if AUTH_ENABLED:
         if not api_key or api_key not in VALID_API_KEYS:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
     
+    # Check in-memory first
     job = jobs.get(job_id)
+    
+    # Fall back to database if not in memory
     if not job:
-        raise HTTPException(status_code=404, detail="Job ID not found")
+        db_job = get_job_db(job_id)
+        if db_job:
+            job = db_job
+        else:
+            raise HTTPException(status_code=404, detail="Job ID not found")
     
     # Ownership validation: user can only access their own jobs
-    if AUTH_ENABLED and job.get("api_key") != api_key:
+    if AUTH_ENABLED and job.get("api_key") != effective_key:
         raise HTTPException(status_code=403, detail="Access denied: job belongs to another user")
     
     # Return job without exposing api_key
@@ -460,9 +514,17 @@ def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks, api_key: str
     Start a background analysis job and return job ID immediately.
     """
     # Verify API key if auth is enabled
+    effective_key = api_key or "no-auth"
     if AUTH_ENABLED:
         if not api_key or api_key not in VALID_API_KEYS:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    
+    # Rate limiting
+    if not check_rate_limit(effective_key):
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Rate limit exceeded: max {MAX_REQUESTS_PER_MINUTE} requests per minute"
+        )
     
     # SSRF protection: validate URL before processing
     if not validate_company_url(req.company_url):
@@ -471,23 +533,57 @@ def analyze(req: AnalyzeRequest, background_tasks: BackgroundTasks, api_key: str
             detail="Invalid company_url: must be a public http/https URL (no localhost, internal IPs, or cloud metadata)"
         )
     
+    # Quota enforcement
+    is_allowed, remaining = check_quota(effective_key)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily quota exceeded: limit is {DAILY_QUOTA_PER_KEY} reports per day"
+        )
+    
+    # Cleanup old jobs and check capacity
+    cleaned = cleanup_old_jobs()
+    if cleaned > 0:
+        logger.info(f"Cleaned up {cleaned} expired jobs")
+    
+    if len(jobs) >= MAX_JOBS_IN_MEMORY:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Server at capacity: {MAX_JOBS_IN_MEMORY} concurrent jobs. Try again later."
+        )
+    
     job_id = str(uuid4())
-    jobs[job_id] = {
+    job_data = {
         "status": "queued",
         "progress": 0,
         "result": None,
         "error": None,
         "company_url": req.company_url,
         "company_name": req.company_name,
-        "api_key": api_key or "no-auth",  # Store for ownership validation
+        "api_key": effective_key,
+        "created_at": time(),
+        "focus": req.focus,
     }
+    jobs[job_id] = job_data
     
-    background_tasks.add_task(_run_analysis_task, job_id, req, api_key or "no-auth")
+    # Persist job to database (for restart survival)
+    save_job(
+        job_id=job_id,
+        status="queued",
+        progress=0,
+        company_url=req.company_url,
+        company_name=req.company_name,
+        focus=req.focus,
+        api_key=effective_key
+    )
+    
+    background_tasks.add_task(_run_analysis_task, job_id, req, effective_key)
     
     return {
         "job_id": job_id,
         "status": "queued",
-        "message": "Analysis started. Poll /jobs/{job_id} for status."
+        "message": "Analysis started. Poll /jobs/{job_id} for status.",
+        "quota_remaining": remaining - 1
     }
 
 

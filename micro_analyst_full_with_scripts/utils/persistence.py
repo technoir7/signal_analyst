@@ -56,6 +56,22 @@ def init_db() -> None:
         )
     """)
     
+    # Jobs table (for restart survival)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS jobs (
+            id TEXT PRIMARY KEY,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT NOT NULL DEFAULT 'queued',
+            progress INTEGER DEFAULT 0,
+            company_url TEXT,
+            company_name TEXT,
+            focus TEXT,
+            api_key TEXT,
+            result_json TEXT,
+            error TEXT
+        )
+    """)
+    
     conn.commit()
     conn.close()
     logger.info(f"Database initialized at {DB_PATH}")
@@ -151,6 +167,170 @@ def increment_usage(api_key: str) -> None:
         conn.close()
     except Exception as e:
         logger.error(f"Failed to increment usage for {api_key}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Quota Enforcement
+# ---------------------------------------------------------------------------
+DAILY_QUOTA_PER_KEY = int(os.getenv("DAILY_QUOTA_PER_KEY", "100"))
+
+
+def get_usage_today(api_key: str) -> int:
+    """Get the number of reports generated today for an API key."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        today = datetime.utcnow().date()
+        
+        cursor.execute(
+            "SELECT report_count FROM usage WHERE api_key = ? AND date = ?",
+            (api_key, today)
+        )
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        return row[0] if row else 0
+    except Exception as e:
+        logger.error(f"Failed to get usage for {api_key}: {e}")
+        return 0
+
+
+def check_quota(api_key: str) -> tuple[bool, int]:
+    """
+    Check if API key is under daily quota.
+    Returns (is_allowed, remaining_quota).
+    """
+    used = get_usage_today(api_key)
+    remaining = max(0, DAILY_QUOTA_PER_KEY - used)
+    return (used < DAILY_QUOTA_PER_KEY, remaining)
+
+
+# ---------------------------------------------------------------------------
+# Job Persistence (for restart survival)
+# ---------------------------------------------------------------------------
+def save_job(
+    job_id: str,
+    status: str,
+    progress: int,
+    company_url: str,
+    company_name: Optional[str],
+    focus: Optional[str],
+    api_key: str,
+    result: Optional[Dict[str, Any]] = None,
+    error: Optional[str] = None
+) -> None:
+    """Save or update a job in the database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            """
+            INSERT INTO jobs (id, status, progress, company_url, company_name, focus, api_key, result_json, error)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET 
+                status = excluded.status,
+                progress = excluded.progress,
+                result_json = excluded.result_json,
+                error = excluded.error
+            """,
+            (
+                job_id,
+                status,
+                progress,
+                company_url,
+                company_name,
+                focus,
+                api_key,
+                json.dumps(result) if result else None,
+                error
+            )
+        )
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to save job {job_id}: {e}")
+
+
+def get_job_db(job_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve a job from the database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            result_json = row["result_json"]
+            return {
+                "id": row["id"],
+                "status": row["status"],
+                "progress": row["progress"],
+                "company_url": row["company_url"],
+                "company_name": row["company_name"],
+                "focus": row["focus"],
+                "api_key": row["api_key"],
+                "result": json.loads(result_json) if result_json else None,
+                "error": row["error"],
+                "created_at": row["created_at"]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Failed to retrieve job {job_id}: {e}")
+        return None
+
+
+def load_pending_jobs() -> Dict[str, Dict[str, Any]]:
+    """Load all non-complete jobs from database (for restart recovery)."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT * FROM jobs WHERE status NOT IN ('complete', 'failed')"
+        )
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        pending = {}
+        for row in rows:
+            result_json = row["result_json"]
+            pending[row["id"]] = {
+                "status": row["status"],
+                "progress": row["progress"],
+                "company_url": row["company_url"],
+                "company_name": row["company_name"],
+                "focus": row["focus"],
+                "api_key": row["api_key"],
+                "result": json.loads(result_json) if result_json else None,
+                "error": row["error"],
+            }
+        
+        logger.info(f"Loaded {len(pending)} pending jobs from database")
+        return pending
+    except Exception as e:
+        logger.error(f"Failed to load pending jobs: {e}")
+        return {}
+
+
+def delete_job(job_id: str) -> None:
+    """Delete a job from the database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to delete job {job_id}: {e}")
 
 
 def markdown_to_pdf(markdown_text: str, company_name: str = "Company") -> bytes:
