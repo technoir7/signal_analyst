@@ -128,6 +128,14 @@ This preserves reproducibility while meeting the hackathon’s requirements.
 pip install -r requirements.txt
 ```
 
+### **Start individual services manually**
+
+You can also start the agent directly with uvicorn:
+
+```bash
+uvicorn agent.micro_analyst:app --host 0.0.0.0 --port 8000
+```
+
 ### **Start the full MCP + agent cluster (recommended)**
 
 ```bash

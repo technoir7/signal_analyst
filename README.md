@@ -53,11 +53,11 @@ cp .env.example .env
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Start MCP microservices
-./run_all.sh
+# 3. Start MCP microservices (requires tmux)
+./run_all_tmux.sh
 
-# 4. Launch the Backend (REQUIRED)
-./run_all.sh
+# 4. Launch the Backend with uvicorn (REQUIRED)
+uvicorn agent.micro_analyst:app --host 0.0.0.0 --port 8000
 # Wait for: "Backend ready at http://localhost:8000"
 # Verify: curl http://localhost:8000/health
 

@@ -38,7 +38,7 @@ class TestInterpretiveInference(unittest.TestCase):
         
         # Check for mandatory sections
         self.assertIn("## 1. Web Presence", report)
-        self.assertIn("## 8. Strategic Posture Summary", report)
+        self.assertIn("## 8. Strategic Recommendations", report)
         self.assertTrue(len(inferred.strategic_posture) > 50, "Strategic Posture too short")
 
     def test_absence_generates_plausible_inference(self):

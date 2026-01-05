@@ -274,7 +274,7 @@ class LLMClient:
                      lines.append(f"_Potential causes: {causes}_\n\n")
         
         # 8. Strategic Posture (Mandatory)
-        lines.append("## 8. Strategic Posture Summary\n\n")
+        lines.append("## 8. Strategic Recommendations\n\n")
         posture = profile_dict.get("strategic_posture") or "System failed to synthesize posture."
         lines.append(f"{posture}\n\n")
 

@@ -56,6 +56,7 @@ WEAK_CMS_INDICATORS = {
 
 WEAK_FRAMEWORK_INDICATORS = {
     "react": "React",
+    "next.js": "Next.js",  # Requirement 7: detect Next.js from plain text
     "vue": "Vue",
     "angular": "Angular",
     "svelte": "Svelte",
@@ -215,12 +216,14 @@ def run_tech_stack(payload: TechStackInput) -> TechStackOutput:
         probable_framework = weak_fw if not strong_fw else None
         probable_cms = weak_cms if not strong_cms else None
 
-        # Backwards compatibility: populate legacy fields
+        # Backwards compatibility: populate legacy fields with ALL detected frameworks
         frameworks = []
         if detected_framework:
             frameworks.append(detected_framework)
-        if probable_framework and probable_framework not in frameworks:
-            frameworks.append(probable_framework)
+        # Also add all weak framework detections (Requirement 7: include Next.js)
+        for marker, label in WEAK_FRAMEWORK_INDICATORS.items():
+            if marker in html and label not in frameworks:
+                frameworks.append(label)
 
         cms_final = detected_cms or probable_cms
 
