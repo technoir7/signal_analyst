@@ -255,6 +255,7 @@ def extract_wayback_signals(html: str) -> Dict[str, Any]:
             "framework_hints": framework_hints,
             "html_bytes": html_bytes,
             "script_count": script_count,
+            "institutional_signals": extract_institutional_signals(html, soup),
         }
         
     except Exception as e:
@@ -270,7 +271,359 @@ def extract_wayback_signals(html: str) -> Dict[str, Any]:
             "framework_hints": [],
             "html_bytes": 0,
             "script_count": 0,
+            "institutional_signals": _empty_institutional_signals(),
         }
+
+
+# ---------------------------------------------------------------------------
+# Institutional Drift Signal Extraction
+# ---------------------------------------------------------------------------
+
+import re
+
+# Section heading patterns for institutional sites
+SECTION_PATTERNS = {
+    "about": [r"\babout\b", r"\bwho we are\b", r"\bour story\b", r"\bmission\b"],
+    "admissions": [r"\badmissions?\b", r"\bapply\b", r"\benrollment\b", r"\bapplication\b"],
+    "programs": [r"\bprograms?\b", r"\bcurriculum\b", r"\bcourses?\b", r"\bdegrees?\b"],
+    "faculty": [r"\bfaculty\b", r"\binstructors?\b", r"\bteachers?\b", r"\bstaff\b"],
+    "contact": [r"\bcontact\b", r"\bget in touch\b", r"\breach us\b"],
+}
+
+# Prestige keywords
+ACCREDITATION_PATTERN = re.compile(r"\baccredit(?:ed|ation|ing)?\b", re.IGNORECASE)
+FOUNDING_YEAR_PATTERN = re.compile(
+    r"(?:since|founded|est\.?|established|circa)\s*(\d{4})", re.IGNORECASE
+)
+EXHIBITION_PATTERN = re.compile(r"\b(?:exhibition|exhibit|show|gallery|galleries)\b", re.IGNORECASE)
+PARTNER_PATTERN = re.compile(r"\b(?:partner(?:ship)?|affiliate|collaboration|in partnership)\b", re.IGNORECASE)
+
+# Faculty name heuristic: Two or more capitalized words
+FACULTY_NAME_PATTERN = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b")
+
+
+def _empty_institutional_signals() -> Dict[str, Any]:
+    """Return empty/default institutional signals for error cases."""
+    return {
+        "text_metrics": {
+            "char_count": 0,
+            "word_count": 0,
+            "section_presence": {k: False for k in SECTION_PATTERNS.keys()}
+        },
+        "prestige_signals": {
+            "has_accreditation": False,
+            "founding_year": None,
+            "faculty_name_count": 0,
+            "exhibition_mentions": 0,
+            "partner_mentions": 0,
+        },
+        "structural_signals": {
+            "img_count": 0,
+            "section_count": 0,
+            "nav_link_count": 0,
+            "footer_link_count": 0,
+            "heading_count": 0,
+        }
+    }
+
+
+def extract_institutional_signals(html: str, soup: BeautifulSoup) -> Dict[str, Any]:
+    """
+    Extract institutional-specific signals for static/legacy sites.
+    
+    Returns nested dict with:
+    - text_metrics: char/word counts, section presence
+    - prestige_signals: accreditation, founding year, faculty, exhibitions
+    - structural_signals: img/section/nav/footer counts
+    """
+    try:
+        return {
+            "text_metrics": _extract_text_metrics(soup),
+            "prestige_signals": _extract_prestige_signals(html, soup),
+            "structural_signals": _extract_structural_signals(soup),
+        }
+    except Exception as e:
+        logger.warning(f"Error extracting institutional signals: {e}")
+        return _empty_institutional_signals()
+
+
+def _extract_text_metrics(soup: BeautifulSoup) -> Dict[str, Any]:
+    """Extract textual churn signals."""
+    # Get visible text (exclude script/style)
+    for element in soup(["script", "style", "noscript", "meta", "link"]):
+        element.decompose()
+    
+    visible_text = soup.get_text(separator=" ", strip=True)
+    
+    # Metrics
+    char_count = len(visible_text)
+    words = visible_text.split()
+    word_count = len(words)
+    
+    # Section presence detection via headings
+    all_headings_text = " ".join(
+        h.get_text(strip=True).lower() 
+        for h in soup.find_all(["h1", "h2", "h3", "h4"])
+    )
+    
+    section_presence = {}
+    for section_name, patterns in SECTION_PATTERNS.items():
+        section_presence[section_name] = any(
+            re.search(p, all_headings_text, re.IGNORECASE) 
+            for p in patterns
+        )
+    
+    return {
+        "char_count": char_count,
+        "word_count": word_count,
+        "section_presence": section_presence,
+    }
+
+
+def _extract_prestige_signals(html: str, soup: BeautifulSoup) -> Dict[str, Any]:
+    """Extract trust and prestige markers."""
+    html_lower = html.lower()
+    
+    # Accreditation
+    has_accreditation = bool(ACCREDITATION_PATTERN.search(html))
+    
+    # Founding year (find earliest)
+    year_matches = FOUNDING_YEAR_PATTERN.findall(html)
+    founding_year = None
+    if year_matches:
+        years = [int(y) for y in year_matches if 1800 <= int(y) <= 2030]
+        if years:
+            founding_year = min(years)
+    
+    # Exhibition mentions
+    exhibition_mentions = len(EXHIBITION_PATTERN.findall(html))
+    
+    # Partner mentions
+    partner_mentions = len(PARTNER_PATTERN.findall(html))
+    
+    # Faculty name count (heuristic)
+    # Look for names near faculty/instructor sections
+    faculty_section = None
+    for heading in soup.find_all(["h1", "h2", "h3", "h4"]):
+        heading_text = heading.get_text(strip=True).lower()
+        if any(kw in heading_text for kw in ["faculty", "instructor", "teacher", "staff"]):
+            # Get parent section or next siblings
+            parent = heading.find_parent(["section", "div", "article"])
+            if parent:
+                faculty_section = parent.get_text()
+                break
+    
+    faculty_name_count = 0
+    if faculty_section:
+        # Count capitalized name patterns
+        names = FACULTY_NAME_PATTERN.findall(faculty_section)
+        # Filter common false positives
+        filtered_names = [
+            n for n in names 
+            if not any(fp in n.lower() for fp in ["learn more", "read more", "view all", "see more"])
+        ]
+        faculty_name_count = len(filtered_names)
+    
+    return {
+        "has_accreditation": has_accreditation,
+        "founding_year": founding_year,
+        "faculty_name_count": faculty_name_count,
+        "exhibition_mentions": exhibition_mentions,
+        "partner_mentions": partner_mentions,
+    }
+
+
+def _extract_structural_signals(soup: BeautifulSoup) -> Dict[str, Any]:
+    """Extract structural complexity proxies."""
+    # Image count
+    img_count = len(soup.find_all("img"))
+    
+    # Section count
+    section_count = len(soup.find_all("section"))
+    
+    # Navigation links
+    nav_link_count = 0
+    for nav in soup.find_all("nav"):
+        nav_link_count += len(nav.find_all("a"))
+    
+    # Footer links
+    footer_link_count = 0
+    for footer in soup.find_all("footer"):
+        footer_link_count += len(footer.find_all("a"))
+    
+    # Heading count (h2-h4, excluding h1)
+    heading_count = len(soup.find_all(["h2", "h3", "h4"]))
+    
+    return {
+        "img_count": img_count,
+        "section_count": section_count,
+        "nav_link_count": nav_link_count,
+        "footer_link_count": footer_link_count,
+        "heading_count": heading_count,
+    }
+
+
+def compute_institutional_delta(
+    older: Dict[str, Any], 
+    newer: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Compute delta between two institutional signal snapshots.
+    
+    Args:
+        older: institutional_signals dict from older snapshot
+        newer: institutional_signals dict from newer snapshot
+        
+    Returns:
+        Dict with absolute and percentage changes
+    """
+    old_text = older.get("text_metrics", {})
+    new_text = newer.get("text_metrics", {})
+    old_prestige = older.get("prestige_signals", {})
+    new_prestige = newer.get("prestige_signals", {})
+    old_struct = older.get("structural_signals", {})
+    new_struct = newer.get("structural_signals", {})
+    
+    # Text delta
+    old_words = old_text.get("word_count", 0)
+    new_words = new_text.get("word_count", 0)
+    word_delta = new_words - old_words
+    text_delta_pct = (abs(word_delta) / max(old_words, 1)) * 100
+    
+    # Section changes
+    old_sections = old_text.get("section_presence", {})
+    new_sections = new_text.get("section_presence", {})
+    sections_added = [s for s, present in new_sections.items() if present and not old_sections.get(s, False)]
+    sections_removed = [s for s, present in old_sections.items() if present and not new_sections.get(s, False)]
+    
+    # Prestige changes
+    old_accred = old_prestige.get("has_accreditation", False)
+    new_accred = new_prestige.get("has_accreditation", False)
+    
+    old_year = old_prestige.get("founding_year")
+    new_year = new_prestige.get("founding_year")
+    founding_year_change = None
+    if old_year != new_year and (old_year or new_year):
+        founding_year_change = (old_year, new_year)
+    
+    faculty_delta = new_prestige.get("faculty_name_count", 0) - old_prestige.get("faculty_name_count", 0)
+    exhibition_delta = new_prestige.get("exhibition_mentions", 0) - old_prestige.get("exhibition_mentions", 0)
+    partner_delta = new_prestige.get("partner_mentions", 0) - old_prestige.get("partner_mentions", 0)
+    
+    # Structural changes
+    img_delta = new_struct.get("img_count", 0) - old_struct.get("img_count", 0)
+    nav_delta = new_struct.get("nav_link_count", 0) - old_struct.get("nav_link_count", 0)
+    section_delta = new_struct.get("section_count", 0) - old_struct.get("section_count", 0)
+    heading_delta = new_struct.get("heading_count", 0) - old_struct.get("heading_count", 0)
+    
+    return {
+        "text_delta_pct": round(text_delta_pct, 1),
+        "word_delta": word_delta,
+        "sections_added": sections_added,
+        "sections_removed": sections_removed,
+        "prestige_changes": {
+            "accreditation_gained": new_accred and not old_accred,
+            "accreditation_lost": old_accred and not new_accred,
+            "founding_year_change": founding_year_change,
+            "faculty_count_delta": faculty_delta,
+            "exhibition_delta": exhibition_delta,
+            "partner_delta": partner_delta,
+        },
+        "structural_changes": {
+            "img_delta": img_delta,
+            "nav_link_delta": nav_delta,
+            "section_delta": section_delta,
+            "heading_delta": heading_delta,
+        }
+    }
+
+
+def institutional_delta_to_markdown(
+    delta: Dict[str, Any], 
+    label: str,
+    old_words: int = 0,
+    new_words: int = 0
+) -> str:
+    """
+    Render institutional drift delta as markdown.
+    
+    Args:
+        delta: Output from compute_institutional_delta()
+        label: Time period label (e.g., "~180 days ago → Today")
+        old_words: Word count from older snapshot
+        new_words: Word count from newer snapshot
+        
+    Returns:
+        Markdown string block
+    """
+    lines = [f"\n### Institutional Drift: {label}\n\n"]
+    
+    # Content Volume
+    lines.append("**Content Volume**\n")
+    word_delta = delta.get("word_delta", 0)
+    delta_pct = delta.get("text_delta_pct", 0)
+    direction = "+" if word_delta >= 0 else ""
+    lines.append(f"- Words: {old_words:,} → {new_words:,} ({direction}{word_delta:,}, {delta_pct:.1f}% change)\n")
+    
+    sections_added = delta.get("sections_added", [])
+    sections_removed = delta.get("sections_removed", [])
+    if sections_added:
+        lines.append(f"- Sections appeared: {', '.join(s.title() for s in sections_added)}\n")
+    if sections_removed:
+        lines.append(f"- Sections removed: {', '.join(s.title() for s in sections_removed)}\n")
+    if not sections_added and not sections_removed:
+        lines.append("- Sections: stable\n")
+    
+    lines.append("\n")
+    
+    # Prestige Markers
+    prestige = delta.get("prestige_changes", {})
+    has_prestige_change = any([
+        prestige.get("accreditation_gained"),
+        prestige.get("accreditation_lost"),
+        prestige.get("founding_year_change"),
+        abs(prestige.get("faculty_count_delta", 0)) > 0,
+        abs(prestige.get("exhibition_delta", 0)) > 0,
+    ])
+    
+    if has_prestige_change:
+        lines.append("**Prestige Markers**\n")
+        if prestige.get("accreditation_gained"):
+            lines.append("- Accreditation: Now claims accreditation\n")
+        if prestige.get("accreditation_lost"):
+            lines.append("- Accreditation: No longer claims accreditation\n")
+        if prestige.get("founding_year_change"):
+            old_yr, new_yr = prestige["founding_year_change"]
+            lines.append(f"- Founding year: {old_yr or '(none)'} → {new_yr or '(none)'}\n")
+        
+        faculty_delta = prestige.get("faculty_count_delta", 0)
+        if faculty_delta != 0:
+            lines.append(f"- Faculty names: {'+' if faculty_delta > 0 else ''}{faculty_delta}\n")
+        
+        exhibit_delta = prestige.get("exhibition_delta", 0)
+        if exhibit_delta != 0:
+            lines.append(f"- Exhibition mentions: {'+' if exhibit_delta > 0 else ''}{exhibit_delta}\n")
+        
+        lines.append("\n")
+    
+    # Structural Changes
+    struct = delta.get("structural_changes", {})
+    has_struct_change = any(abs(v) >= 3 for v in struct.values())
+    
+    if has_struct_change:
+        lines.append("**Site Structure**\n")
+        for key, value in struct.items():
+            if abs(value) >= 3:
+                label_nice = key.replace("_delta", "").replace("_", " ").title()
+                lines.append(f"- {label_nice}: {'+' if value > 0 else ''}{value}\n")
+        lines.append("\n")
+    
+    # If nothing notable changed
+    if not has_prestige_change and not has_struct_change and not sections_added and not sections_removed and abs(delta_pct) < 10:
+        lines.append("_No significant institutional changes detected._\n\n")
+    
+    return "".join(lines)
+
 
 
 def get_historical_snapshots(url: str) -> List[Dict[str, Any]]:
@@ -308,13 +661,68 @@ def get_historical_snapshots(url: str) -> List[Dict[str, Any]]:
                 
                 if html:
                     signals = extract_wayback_signals(html)
-                    results.append({
+                    tier = determine_signal_tier(signals)
+                    
+                    result_entry = {
                         "label": label,
                         "timestamp": closest["timestamp"],
                         "signals": signals,
-                    })
+                        "tier": tier,
+                    }
+                    
+                    # If Tier 2 (fallback), add structural-only summary
+                    if tier == "fallback_structural":
+                        result_entry["fallback_signals"] = extract_fallback_structural_signals(signals)
+                    
+                    results.append(result_entry)
     
     return results
+
+
+def determine_signal_tier(signals: Dict[str, Any]) -> str:
+    """
+    Determine which signal tier applies based on data quality.
+    
+    Tier 1 ("semantic"): Title present AND visible text > 100 chars
+    Tier 2 ("fallback_structural"): Otherwise
+    
+    Returns:
+        "semantic" or "fallback_structural"
+    """
+    title = signals.get("title")
+    inst = signals.get("institutional_signals", {})
+    text_metrics = inst.get("text_metrics", {})
+    char_count = text_metrics.get("char_count", 0)
+    
+    # Tier 1 requires meaningful semantic content
+    has_title = bool(title and len(title.strip()) > 0)
+    has_text = char_count > 100
+    
+    if has_title and has_text:
+        return "semantic"
+    else:
+        return "fallback_structural"
+
+
+def extract_fallback_structural_signals(signals: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract Tier 2 fallback signals from existing signal dict.
+    
+    Used when semantic signals (title, text) are unavailable.
+    These are purely structural, deterministic, non-semantic.
+    """
+    inst = signals.get("institutional_signals", {})
+    struct = inst.get("structural_signals", {})
+    
+    return {
+        "html_bytes": signals.get("html_bytes", 0),
+        "section_count": struct.get("section_count", 0),
+        "nav_link_count": struct.get("nav_link_count", 0),
+        "image_count": struct.get("img_count", 0),
+        "script_count": signals.get("script_count", 0),
+        "footer_link_count": struct.get("footer_link_count", 0),
+    }
+
 
 
 def wayback_delta_to_markdown(
@@ -458,4 +866,40 @@ def _format_snapshot_comparison(older: Dict[str, Any], newer: Dict[str, Any], la
             lines.append(f"- **Page size**: {old_bytes:,} → {new_bytes:,} bytes\n")
     
     lines.append("\n")
+    return "".join(lines)
+
+
+def fallback_structural_drift_to_markdown(
+    historical_snapshots: List[Dict[str, Any]]
+) -> str:
+    """
+    Render structural drift (Tier 2 fallback) as markdown.
+    
+    Used when semantic signals are unavailable (JS-heavy sites, thin snapshots).
+    Reports only deterministic, structural changes with no interpretation.
+    """
+    # Check if any snapshots used fallback tier
+    fallback_snapshots = [s for s in historical_snapshots if s.get("tier") == "fallback_structural"]
+    
+    if not fallback_snapshots:
+        return ""  # Only render when fallback tier was used
+    
+    lines = ["\n\n## Structural Drift (Wayback Fallback Signals)\n"]
+    lines.append("_Semantic signals unavailable. Showing structural-only metrics._\n\n")
+    lines.append("| Period | HTML Bytes | Sections | Nav Links | Images | Scripts | Footer Links |\n")
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n")
+    
+    for snap in fallback_snapshots:
+        label = snap.get("label", "?")
+        fb = snap.get("fallback_signals", {})
+        
+        lines.append(
+            f"| {label} | {fb.get('html_bytes', 0):,} | "
+            f"{fb.get('section_count', 0)} | {fb.get('nav_link_count', 0)} | "
+            f"{fb.get('image_count', 0)} | {fb.get('script_count', 0)} | "
+            f"{fb.get('footer_link_count', 0)} |\n"
+        )
+    
+    lines.append("\n_Note: These are shell-level HTML metrics only. No semantic interpretation is possible._\n")
+    
     return "".join(lines)

@@ -173,5 +173,50 @@ def generate_cohort_report_markdown(cohort_name: str, profiles: List[PeerDriftPr
             comp_str = "N/A"
             
         lines.append(f"| {p.name} | {pricing_d} | {auth_d} | {trust_d} | {comp_str} |\n")
+    
+    # 5. NEW: Temporal Content Drift Table (page_text_length)
+    lines.append("\n## Temporal Content Drift (Wayback)\n")
+    lines.append("_Visible text character count: T0 (recent) vs T-1 (1 year ago)_\n\n")
+    lines.append("| Target | T-1 Chars | T0 Chars | Δ Chars | % Change | Direction |\n")
+    lines.append("| --- | ---: | ---: | ---: | ---: | --- |\n")
+    
+    for p in profiles:
+        if not p.has_history:
+            lines.append(f"| {p.name} | - | - | - | - | No history |\n")
+            continue
+        
+        # Get char_count from institutional_signals (or fallback to html_bytes)
+        t0_inst = p.t0_signals.get("institutional_signals", {})
+        t1_inst = p.t1_signals.get("institutional_signals", {})
+        
+        t0_chars = t0_inst.get("text_metrics", {}).get("char_count", 0)
+        t1_chars = t1_inst.get("text_metrics", {}).get("char_count", 0)
+        
+        # Fallback to html_bytes if no institutional signals
+        if t0_chars == 0:
+            t0_chars = p.t0_signals.get("html_bytes", 0)
+        if t1_chars == 0:
+            t1_chars = p.t1_signals.get("html_bytes", 0)
+        
+        delta = t0_chars - t1_chars
+        if t1_chars > 0:
+            pct_change = ((t0_chars - t1_chars) / t1_chars) * 100
+            pct_str = f"{pct_change:+.1f}%"
+        else:
+            pct_str = "N/A"
+        
+        # Direction interpretation (conservative)
+        if t1_chars == 0:
+            direction = "No baseline"
+        elif abs(pct_change) < 10:
+            direction = "Stable"
+        elif delta > 0:
+            direction = "Content expansion"
+        else:
+            direction = "Content contraction"
+        
+        lines.append(f"| {p.name} | {t1_chars:,} | {t0_chars:,} | {delta:+,} | {pct_str} | {direction} |\n")
+    
+    lines.append("\n_Note: Text extraction is deterministic. Expansion/contraction refers only to measured character count, not content quality._\n")
         
     return "".join(lines)

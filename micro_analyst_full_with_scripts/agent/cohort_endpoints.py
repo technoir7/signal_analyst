@@ -232,13 +232,32 @@ def cohort_results(
     
     # Check job completion status
     job_ids = cohort.get("job_ids", [])
+    
+    # No jobs means analysis hasn't been started OR it's an edge case
     if not job_ids:
+        # Check if we have drift results at least
+        drift_matrix = cohort.get("drift_matrix")
+        drift_report = cohort.get("drift_report_md")
+        
+        # If drift is done, show that
+        if drift_report:
+            return CohortResultsResponse(
+                cohort_id=cohort_id,
+                anchor_url=cohort["anchor_url"],
+                status="complete",
+                matrix=None,
+                report_markdown=None,
+                drift_matrix=drift_matrix,
+                drift_report_markdown=drift_report
+            )
+        
+        # Otherwise return current status (likely "confirmed" - needs /analyze call)
         return CohortResultsResponse(
             cohort_id=cohort_id,
             anchor_url=cohort["anchor_url"],
-            status=cohort["status"],
+            status=cohort.get("status", "unknown"),
             matrix=None,
-            report_markdown=None
+            report_markdown="⚠️ No analysis jobs found. Click 'Analyze Cohort' to start analysis."
         )
     
     # Check if all jobs are complete

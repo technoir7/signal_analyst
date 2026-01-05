@@ -1083,7 +1083,8 @@ cohortProposeBtn?.addEventListener("click", async () => {
     });
 
     currentCohortId = data.cohort_id;
-    proposedPeers = data.proposed_peers || [];
+    // Backend returns "candidates", not "proposed_peers"
+    proposedPeers = data.candidates || data.proposed_peers || [];
 
     // Render proposed peers with checkboxes
     if (proposedPeers.length === 0) {
@@ -1168,7 +1169,9 @@ cohortAnalyzeBtn?.addEventListener("click", async () => {
   try {
     await apiCall("POST", `/cohorts/${currentCohortId}/analyze`);
     setCohortStatus("idle", "ANALYZING");
-    cohortResultsDiv.innerHTML = `<p>Analysis started. Click "Fetch Results" to check progress.</p>`;
+    cohortResultsDiv.innerHTML = `<p class="pulse-text">Initiating analysis...</p>`;
+    // Start polling automatically
+    monitorCohortProgress("complete");
   } catch (err) {
     setCohortStatus("error", "ERROR");
     cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
@@ -1189,7 +1192,9 @@ cohortDriftBtn?.addEventListener("click", async () => {
   try {
     await apiCall("POST", `/cohorts/${currentCohortId}/drift`);
     setCohortStatus("idle", "DRIFT STARTED");
-    cohortResultsDiv.innerHTML = `<p>Drift analysis started (background). Click "Fetch Results" to check progress.</p>`;
+    cohortResultsDiv.innerHTML += `<p class="pulse-text" style="color: #a855f7;">🌊 Starting drift analysis...</p>`;
+    // Start polling for drift specifically
+    monitorCohortProgress("drift");
   } catch (err) {
     setCohortStatus("error", "ERROR");
     cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
@@ -1198,83 +1203,122 @@ cohortDriftBtn?.addEventListener("click", async () => {
   }
 });
 
-cohortResultsBtn?.addEventListener("click", async () => {
-  if (!currentCohortId) {
-    alert("No cohort to fetch results for");
-    return;
-  }
+// Polling Helper
+async function monitorCohortProgress(targetStatus = "complete") {
+  setCohortStatus("loading", "ANALYZING...");
 
-  setCohortStatus("loading", "FETCHING...");
-  cohortResultsBtn.disabled = true;
+  const pollInterval = 2000;
+  let attempts = 0;
 
-  try {
-    const data = await apiCall("GET", `/cohorts/${currentCohortId}/results`);
+  while (true) {
+    attempts++;
+    try {
+      const data = await apiCall("GET", `/cohorts/${currentCohortId}/results`);
 
-    if (data.status === "pending" || data.status === "running") {
-      cohortResultsDiv.innerHTML = `<p>Analysis in progress (${data.progress || 0}%). Click "Fetch Results" again.</p>`;
-      setCohortStatus("idle", "IN PROGRESS");
-    } else if (data.status === "complete") {
-      // Render matrix
-      const matrix = data.matrix || [];
-      if (matrix.length > 0) {
-        const headers = Object.keys(matrix[0]);
-        let html = '<table class="cohort-matrix"><thead><tr>';
-        headers.forEach(h => { html += `<th>${h}</th>`; });
-        html += '</tr></thead><tbody>';
-        matrix.forEach(row => {
-          html += '<tr>';
-          headers.forEach(h => { html += `<td>${row[h] ?? "-"}</td>`; });
-          html += '</tr>';
-        });
-        html += '</tbody></table>';
+      // Check completion based on target
+      let isReady = false;
+      if (targetStatus === "complete") {
+        // Main analysis complete if status is "complete" OR we have a report
+        isReady = (data.status === "complete") || !!data.report_markdown;
+      } else if (targetStatus === "drift") {
+        // Drift analysis complete if we have drift report
+        isReady = !!data.drift_report_markdown;
+      }
 
-        // Add collapsible raw JSON
-        html += `
-          <details class="json-collapsible">
-            <summary>View Raw JSON</summary>
-            <pre>${JSON.stringify(data, null, 2)}</pre>
-          </details>
-        `;
+      // Also complete if we got an explicit error/message in report_markdown
+      if (data.report_markdown && data.report_markdown.includes("⚠️")) {
+        isReady = true; // Show warning message
+      }
 
-        cohortResultsDiv.innerHTML = html;
+      if (isReady || attempts > 150) { // 5 min timeout
+        renderCohortResults(data);
+        setCohortStatus("idle", isReady ? "COMPLETE" : "TIMEOUT");
+        break;
       } else {
-        cohortResultsDiv.innerHTML = `<p>No matrix data available.</p>
-          <details class="json-collapsible">
-            <summary>View Raw JSON</summary>
-            <pre>${JSON.stringify(data, null, 2)}</pre>
-          </details>
-        `;
+        // Still running
+        const statusMsg = data.status || "running";
+        cohortResultsDiv.innerHTML = `<p class="pulse-text">analyzing... (${statusMsg})</p>`;
+        await new Promise(r => setTimeout(r, pollInterval));
       }
-
-      // Append Drift Report if available
-      if (data.drift_report_markdown) {
-        html += `<hr style="margin: 24px 0; border-top: 2px dashed var(--border-color);">`;
-        html += `<h3 style="margin-bottom: 12px; color: #a855f7;">🌊 Temporal Drift Analysis</h3>`;
-        html += renderMarkdown(data.drift_report_markdown);
-
-        // Add collapsible drift JSON
-        if (data.drift_matrix) {
-          html += `
-              <details class="json-collapsible">
-                <summary>View Drift Matrix JSON</summary>
-                <pre>${JSON.stringify(data.drift_matrix, null, 2)}</pre>
-              </details>
-            `;
-        }
-      }
-
-      cohortResultsDiv.innerHTML = html;
-      setCohortStatus("idle", "COMPLETE");
-    } else {
-      cohortResultsDiv.innerHTML = `<p>Status: ${data.status}</p>`;
-      setCohortStatus("idle", data.status?.toUpperCase() || "UNKNOWN");
+    } catch (err) {
+      console.error("Polling error:", err);
+      // Don't crash loop on transient network err, but maybe stop if 404
+      if (err.statusCode === 404) break;
+      await new Promise(r => setTimeout(r, pollInterval));
     }
-  } catch (err) {
-    setCohortStatus("error", "ERROR");
-    cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
-  } finally {
-    cohortResultsBtn.disabled = false;
   }
+}
+
+function renderCohortResults(data) {
+  let html = "";
+
+  // 1. Show the markdown report first (this is what the user wants to see most)
+  if (data.report_markdown) {
+    html += `<div class="cohort-report-section">`;
+    html += renderMarkdown(data.report_markdown);
+    html += `</div>`;
+  }
+
+  // 2. Render matrix table
+  const matrixObj = data.matrix || {};
+  const targets = matrixObj.targets || [];
+
+  if (targets.length > 0) {
+    html += `<h3 style="margin-top: 24px; margin-bottom: 12px;">Signal Matrix</h3>`;
+
+    const headers = [
+      "url", "tech_confidence", "pricing_visible",
+      "docs_visible", "jobs_visible", "seo_hygiene", "social_visibility"
+    ];
+
+    html += '<table class="cohort-matrix"><thead><tr>';
+    headers.forEach(h => { html += `<th>${h.replace(/_/g, ' ')}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    targets.forEach(row => {
+      html += '<tr>';
+      headers.forEach(h => {
+        let val = row[h];
+        if (typeof val === 'boolean') val = val ? '✓' : '-';
+        if (val === null || val === undefined) val = '-';
+        // Truncate long URLs
+        if (h === 'url' && typeof val === 'string' && val.length > 30) {
+          val = val.replace(/^https?:\/\//, '').slice(0, 25) + '…';
+        }
+        html += `<td>${val}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  // 3. Append Drift Report if available
+  if (data.drift_report_markdown) {
+    html += `<hr style="margin: 24px 0; border-top: 2px dashed var(--border-color);">`;
+    html += `<h3 style="margin-bottom: 12px; color: #a855f7;">🌊 Temporal Drift Analysis</h3>`;
+    html += renderMarkdown(data.drift_report_markdown);
+  }
+
+  // 4. Fallback message if nothing to show
+  if (!data.report_markdown && targets.length === 0 && !data.drift_report_markdown) {
+    html = `<p style="color: var(--text-muted);">Analysis in progress or no data available yet. Status: ${data.status || 'unknown'}</p>`;
+  }
+
+  // 5. Add collapsible raw JSON at the end
+  html += `
+    <details class="json-collapsible" style="margin-top: 16px;">
+      <summary>View Raw JSON</summary>
+      <pre>${JSON.stringify(data, null, 2)}</pre>
+    </details>
+  `;
+
+  cohortResultsDiv.innerHTML = html;
+}
+
+
+cohortResultsBtn?.addEventListener("click", async () => {
+  if (!currentCohortId) return;
+  monitorCohortProgress("complete"); // Manual trigger if needed
 });
 
 // ---------------------------------------------------------------------
