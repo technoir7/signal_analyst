@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 from time import time
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
@@ -12,7 +13,8 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from core.data_models import CompanyOSINTProfile
-from core.inference import InferenceEngine
+from core.inference import InferenceEngine, InferredProfile, SignalInference
+from core.change_detector import ChangeDetector
 from core.merge_profiles import (
     merge_web_data,
     merge_seo_data,
@@ -26,7 +28,8 @@ from utils.llm_client import LLMClient, get_llm_client
 from agent.web_surfaces import fetch_web_surfaces, aggregate_web_surfaces
 from utils.persistence import (
     init_db, save_report, get_report, increment_usage, markdown_to_pdf,
-    check_quota, save_job, get_job_db, load_pending_jobs, DAILY_QUOTA_PER_KEY
+    check_quota, save_job, get_job_db, load_pending_jobs, DAILY_QUOTA_PER_KEY,
+    get_latest_reports
 )
 from fastapi.responses import Response
 
@@ -632,10 +635,45 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
             api_key=api_key
         )
 
+        # CHANGE DETECTION: Compare with previous report
+        delta_context = None
+        try:
+            # Get latest 2 reports (index 0 is current if we saved it? No, we haven't saved current report yet.)
+            # So get_latest_reports returns previous reports existing in DB.
+            history = get_latest_reports(req.company_url, limit=1)
+            
+            if history:
+                prev_report = history[0] # The most recent one
+                prev_date = datetime.strptime(prev_report["created_at"], "%Y-%m-%d %H:%M:%S") if isinstance(prev_report["created_at"], str) else prev_report["created_at"]
+                
+                # We need to reconstruct InferredProfile from the JSON dict
+                prev_profile_dict = prev_report["profile"]
+                
+                # Pydantic reconstruction
+                prev_profile = InferredProfile(**prev_profile_dict)
+                
+                change_detector = ChangeDetector()
+                delta_report = change_detector.compute_delta(
+                    current=inferred_profile,
+                    previous=prev_profile,
+                    current_date=datetime.utcnow(),
+                    previous_date=prev_date
+                )
+                
+                delta_context = delta_report.model_dump()
+                logger.info(f"[Job {job_id}] Computed delta against report {prev_report['id']} (Score: {delta_report.overall_stability_score})")
+            else:
+                logger.info(f"[Job {job_id}] No history found for delta computation")
+        
+        except Exception as e:
+            logger.error(f"[Job {job_id}] Change detection failed: {e}")
+            # Non-blocking failure; proceed without delta
+
         try:
             report_markdown = llm_client.synthesize_report(
                 profile_dict,
                 req.focus,
+                delta_context=delta_context
             )
         except Exception as e:
             logger.error(f"[Job {job_id}] Synthesis LLM failed: {e}")

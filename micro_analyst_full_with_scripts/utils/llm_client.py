@@ -138,6 +138,7 @@ class LLMClient:
         self,
         profile_dict: Dict[str, Any],
         focus: Optional[str],
+        delta_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Deterministic Markdown report.
@@ -190,6 +191,7 @@ class LLMClient:
                 profile_dict,
                 company_name,
                 red_team=(mode == "red_team"),
+                delta_context=delta_context
             )
 
         return (
@@ -207,12 +209,28 @@ class LLMClient:
         profile_dict: Dict[str, Any],
         company_name: str,
         red_team: bool = False,
+        delta_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Structured, sectioned report using the Interpretive Inference Layer.
         Now consumes SignalInference objects instead of raw data.
         """
         lines: list[str] = []
+        
+        # 0. Strategic Trajectory (if delta exists)
+        if delta_context and delta_context.get("shifts"):
+            lines.append(f"> **Strategic Trajectory (Last {int(delta_context.get('time_elapsed_days', 30))} Days)**\n")
+            stab_score = delta_context.get("overall_stability_score", 1.0)
+            stab_label = "High" if stab_score > 0.8 else "Medium" if stab_score > 0.5 else "Low"
+            lines.append(f"> * **Stability**: {stab_label}\n")
+            lines.append(f"> * **Major Shifts**:\n")
+            
+            for shift in delta_context.get("shifts", []):
+                # Only show High/Medium significance in summary to avoid noise
+                if shift.get("significance") in ("high", "medium"):
+                    icon = "CRITICAL" if shift.get("significance") == "high" else "WARNING"
+                    lines.append(f">     * [{icon}] {shift.get('section')}: {shift.get('description')}\n")
+            lines.append("\n")
         
         section_keys = [
             ("web", "1. Web Presence"),
@@ -589,7 +607,12 @@ class GeminiLLMClient(LLMClient):
     # Synthesis
     # ------------------------------------------------------------------ #
 
-    def synthesize_report(self, profile_dict: Dict[str, Any], focus: Optional[str]) -> str:
+    def synthesize_report(
+        self,
+        profile_dict: Dict[str, Any],
+        focus: Optional[str],
+        delta_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """
         Enhanced multi-voice synthesis:
         - standard        → normal operator brief
@@ -601,7 +624,7 @@ class GeminiLLMClient(LLMClient):
 
         # If Gemini isn't enabled, fallback to deterministic
         if not self._enabled:
-            return super().synthesize_report(profile_dict, focus)
+            return super().synthesize_report(profile_dict, focus, delta_context)
 
         # --- Detect voice ---
         style = "standard"
@@ -712,6 +735,17 @@ Company OSINT profile (JSON):
 
 User focus / priorities:
 {focus or "None provided"}
+
+Strategic Trajectory (Delta / Changes):
+{json.dumps(delta_context, ensure_ascii=False, indent=2) if delta_context else "No historical baseline available."}
+
+INSTRUCTION ON TRAJECTORY:
+If "Strategic Trajectory" data is present (delta_context), you MUST start the report (before Section 1) with a special section:
+> **Strategic Trajectory (Last 30 Days)**
+> *   **Stability**: [High/Medium/Low]
+> *   **Major Shifts**:
+>     *   [CRITICAL/WARNING/INFO] [Signal Description]
+If NO "Strategic Trajectory" data is present, omit this section entirely.
 """
 
         try:

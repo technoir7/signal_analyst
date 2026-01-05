@@ -45,6 +45,12 @@ def init_db() -> None:
             api_key TEXT
         )
     """)
+
+    # Index for fast history lookups
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_reports_url_date 
+        ON reports(company_url, created_at DESC)
+    """)
     
     # Usage metering table
     cursor.execute("""
@@ -163,6 +169,47 @@ def get_report(job_id: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Failed to retrieve report {job_id}: {e}")
         return None
+
+
+def get_latest_reports(company_url: str, limit: int = 5) -> list[Dict[str, Any]]:
+    """
+    Retrieve the most recent reports for a company URL.
+    Returns list in descending order (newest first).
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            """
+            SELECT * FROM reports 
+            WHERE company_url = ? 
+            ORDER BY created_at DESC 
+            LIMIT ?
+            """,
+            (company_url, limit)
+        )
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        results = []
+        for row in rows:
+            results.append({
+                "id": row["id"],
+                "created_at": row["created_at"],
+                "company_name": row["company_name"],
+                "company_url": row["company_url"],
+                "focus": row["focus"],
+                "profile": json.loads(row["profile_json"]),
+                "report_markdown": row["report_markdown"],
+                "api_key": row["api_key"]
+            })
+        return results
+    except Exception as e:
+        logger.error(f"Failed to retrieve history for {company_url}: {e}")
+        return []
 
 
 def increment_usage(api_key: str) -> None:
