@@ -8,9 +8,9 @@
 What this project demonstrates:
 
 - **Systems Engineering:** Designed a distributed architecture with 7+ independent FastAPI microservices and a central orchestrator.
-- **AI Engineering:** Implemented a deterministic LLM synthesis pipeline; integrated a sponsor LLM safely behind a feature flag.
-- **Reliability & Observability:** Schema validation, safe fallbacks, clean data flows, structured logs, reproducible behavior.
-- **Scalability & Modularity:** Each microservice can be reused independently by other agents or extended into new capabilities.
+- **AI Engineering:** Implemented a deterministic LLM synthesis pipeline with automated **Time-Delta** drift tracking.
+- **Reliability & Observability:** Schema validation, safe fallbacks, clean data flows, structured logs, and historical snapshotting.
+- **Scalability & Modularity:** Each microservice can be reused independently; built for future A2A expansion.
 - **Real-World Agentic Design:** Built for Know-Your-Agent requirements and A2A interoperability; clean MCP interfaces.
 
 In short:  
@@ -68,7 +68,8 @@ Given a company name and URL, Micro-Analyst:
 5. **Captures social presence** (stubbed but structured)
 6. **Analyzes hiring signals** from careers pages
 7. **Merges everything** into a `CompanyOSINTProfile`
-8. **Generates a concise intelligence report** via deterministic LLM logic or sponsor LLM
+8. **Performs Time-Delta detection** vs the most recent prior snapshot (if any)
+9. **Generates a concise intelligence report** via deterministic LLM logic or sponsor LLM, including automated change tracking.
 
 The final output feels like what an analyst would write after a fast reconnaissance sweep.
 
@@ -88,6 +89,7 @@ The pipeline mirrors real intelligence work:
 * clean
 * normalize
 * merge
+* **detect drift (time-delta)**
 * synthesize
 
 ### **C. LLM at the end, not the beginning**

@@ -15,6 +15,12 @@ from pydantic import BaseModel, Field
 from core.data_models import CompanyOSINTProfile
 from core.inference import InferenceEngine, InferredProfile, SignalInference
 from core.change_detector import ChangeDetector, delta_to_markdown
+from utils.wayback import (
+    get_historical_snapshots,
+    extract_wayback_signals,
+    wayback_delta_to_markdown,
+)
+
 from core.merge_profiles import (
     merge_web_data,
     merge_seo_data,
@@ -187,6 +193,8 @@ _raw_keys = os.getenv("VALID_API_KEYS", "")
 _parsed_keys = set(k.strip() for k in _raw_keys.split(",") if k.strip())
 VALID_API_KEYS = _parsed_keys if _parsed_keys else {"demo_key_abc123"}
 AUTH_ENABLED = bool(os.getenv("ENABLE_AUTH", "1") == "1")
+ENABLE_WAYBACK = os.getenv("ENABLE_WAYBACK", "0") == "1"
+
 
 def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
     """Verify API key if auth is enabled."""
@@ -936,6 +944,27 @@ def analyze(req: AnalyzeRequest, api_key: str = Header(None, alias="X-API-Key"))
     
     # Append delta section AFTER synthesis (Time-Delta v1)
     report_markdown += delta_to_markdown(delta_report)
+    
+    # Append Wayback delta section if enabled (Wayback v1)
+    if ENABLE_WAYBACK and not _is_pytest_running():
+        try:
+            # Extract current signals from live HTML if available
+            current_signals = None
+            try:
+                if hasattr(profile, "web") and profile.web:
+                    live_html = getattr(profile.web, "raw_html", None)
+                    if live_html:
+                        current_signals = extract_wayback_signals(live_html)
+            except Exception as e:
+                logger.warning(f"[Job {job_id}] Could not extract current signals: {e}")
+            
+            historical = get_historical_snapshots(req.company_url)
+            if historical or current_signals:
+                wayback_section = wayback_delta_to_markdown(current_signals, historical)
+                report_markdown += wayback_section
+        except Exception as e:
+            logger.error(f"[Job {job_id}] Wayback delta failed: {e}")
+    
     
     # Persist report if not in pytest
     if not _is_pytest_running():

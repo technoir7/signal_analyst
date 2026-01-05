@@ -6,6 +6,8 @@
 [![LLM Layer](https://img.shields.io/badge/LLM-Gemini_/_Ollama-green)](https://ollama.com/)
 [![Status](https://img.shields.io/badge/Status-Internal_Prototype-yellow)](#)
 [![Security](https://img.shields.io/badge/Security-Auth_Enabled-green)](#security)
+[![Time-Delta](https://img.shields.io/badge/Feature-Time--Delta_v1-orange)](#persistence--strategic-change-detection)
+[![Cohort-Mode](https://img.shields.io/badge/Feature-Cohort_Mode_v1-blueviolet)](#saas-cohort-mode-v1)
 
 ---
 
@@ -13,7 +15,7 @@
 
 In a world drowning in public data, the bottleneck for investment analysts, sales teams, and corporate strategists is no longer *access* to information, but the **speed of triangulation**. 
 
-**Signal Analyst** is an autonomous intelligence system designed to automate the cross-referencing of a company’s digital footprint. It replaces hours of manual research with a 60-second execution pipeline that deciphers a target's tech stack, hiring velocity, social sentiment, and SEO posture into a single, consultant-grade report.
+**Signal Analyst** is an autonomous intelligence system designed to automate the cross-referencing of a company’s digital footprint. It replaces hours of manual research with a 60-second execution pipeline that deciphers a target's tech stack, hiring velocity, social sentiment, and SEO posture into a single, consultant-grade report with **automated strategic change tracking**.
 
 ---
 
@@ -36,8 +38,10 @@ The hallmark of Signal Analyst is the **Interpretive Inference Layer**. Instead 
 *   *Example*: No social footprint → "Quiet Professional" posture (relationship-driven sales).
 *   *Example*: Opaque tech stack → Correlates with legacy enterprise or air-gapped security.
 
-### **Phase D: Expert Synthesis**
-The **Inferred Profile** is passed to the LLM (Gemini or Ollama) to produce the final brief. This stage always includes a mandatory **Strategic Posture Summary**—a high-density synthesis of what the company optimizes for and where it is vulnerable.
+### **Phase D: Expert Synthesis & Delta Overlay**
+The **Inferred Profile** is passed to the LLM (Gemini or Ollama) to produce the final brief. This stage includes:
+*   **Strategic Recommendations**: A mandatory high-density synthesis of optimization targets and vulnerabilities.
+*   **Time-Delta Injection**: Automated comparison against the last successful snapshot, surfacing shifts in technology, hiring velocity, and market visibility.
 
 ---
 
@@ -71,27 +75,25 @@ python3 -m http.server 8080
 
 ---
 
-## **4. Commercial Features & Security**
+## **4. Persistence & Strategic Change Detection**
 
 Signal Analyst is hardened for production deployment, moving beyond "toy" status with several critical safeguards:
 
-### **Multi-Tenancy & Persistence**
-*   **Report Persistence**: Completed analysis reports are stored in SQLite and survive restarts.
+### **Time-Delta & Dynamic Persistence**
+*   **Time-Delta v1**: The system now stores snapshots of every analysis. On repeat runs, it executes a deterministic diff to identify "breakage" (went dark), "emergence" (new signals), and calculates a 0.0-1.0 stability score.
+*   **Report History**: Completed analysis reports are stored in SQLite; previous runs serve as strategic baselines for drift detection.
 *   **Job State Recovery**: In-flight jobs interrupted by a crash are detected on startup and marked as "failed" to prevent infinite queues.
-*   **Quota Enforcement**: Built-in daily reporting limits per API key (`DAILY_QUOTA_PER_KEY`).
-*   **Sliding Window Rate Limiting**: Prevents API abuse and infrastructure cost-runaway.
 
 ### **Interpretive Inference Layer**
 *   **Absence-as-Signal**: No section is ever left empty. Missing data is mapped to plausible strategic causes (e.g., "Enterprise SLG motion").
-*   **Strategic Posture Mandatory**: Every report is capped with a synthesized summary of the target's operational optimize-for.
+*   **Strategic Recommendations**: Every report is capped with a synthesized summary of the target's operational posture and optimization paths.
 *   **Epistemic Honesty**: Uses probabilistic language ("suggests," "likely") to ensure inferences aren't mistaken for hard-scraped facts.
 
-### **Security & Robustness**
-*   **Default Authentication**: API Key authentication enabled by default (`ENABLE_AUTH=1`).
-*   **WAF Bypass**: Scraper uses browser-mimicking headers (`Referer`, `Accept-Language`) and extended timeouts (300s) to handle aggressive WAFs and high-latency synthesis.
-*   **Network Isolation**: MCP microservices bind to `127.0.0.1` to prevent external access.
-*   **SSRF Protection**: Strict validation logic blocks attacks at the `/analyze` gateway.
-*   **Input Sanitization**: Pydantic-enforced limits on all metadata.
+### **Security & Quota Control**
+*   **Auth-First Enforcement**: API Key verification (`401`) occurs *before* rate limiting or quota checks, ensuring resources are only consumed by authorized users. 
+*   **Built-in Quotas**: Daily reporting limits (`DAILY_QUOTA_PER_KEY`) and sliding window rate limiting prevent resource abuse.
+*   **WAF Bypass**: Scraper uses browser-mimicking headers and extended timeouts (300s) to handle aggressive anti-bot defenses.
+*   **Safety & Isolation**: Strict SSRF protection at the `/analyze` gateway and network isolation for all internal MCP microservices.
 
 ---
 
@@ -189,8 +191,8 @@ graph TD
     end
     
     WS & SEO & TS & EXT --> INF[Interpretive Inference Engine]
-    INF --> LLMSynth[LLM Synthesis]
-    LLMSynth --> FinalReport[Markdown / PDF Export / Matrix]
+    INF --> LLMSynth[LLM Synthesis & Delta Injection]
+    LLMSynth --> FinalReport[Markdown / Delta Report / PDF / Matrix]
     FinalReport --> JobQueue
 ```
 
@@ -207,8 +209,9 @@ python3 -m unittest tests/test_inference.py
 
 This suite validates:
 1.  **Empty Input Resilience**: Ensures reports still generate correctly when all scrapers fail.
-2.  **Strategic Soundness**: Verifies that missing signals (e.g., no reviews) are correctly mapped to plausible strategic interpretations.
-3.  **Epistemic Honesty**: Confirms the system uses probabilistic qualifiers and avoids hallucinating concrete metrics.
+2.  **Strategic Soundness**: Verifies that missing signals are correctly mapped to plausible strategic interpretations.
+3.  **Epistemic Honesty**: Confirms the system uses probabilistic qualifiers and avoids hallucination.
+4.  **Strategic Change Detection**: Validates that snapshots are correctly compared and shifts are surfaced with accurate significance (`tests/test_snapshot_delta.py`).
 
 ---
 
@@ -223,4 +226,5 @@ This suite validates:
 
 - **Demo Mode**: The frontend includes a comprehensive `demo_data.js` simulator that mimics the API response for selected targets (Blue Bottle, Sweetgreen, Glossier) without needing the backend to be active.
  
+**Project Status**: Time-Delta v1 Live | Cohort Mode v1 Live
 © 2026 SPEC_D. Internal Prototype - Not for Public Distribution.
