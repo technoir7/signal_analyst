@@ -236,12 +236,22 @@ def extract_wayback_signals(html: str) -> Dict[str, Any]:
                 if framework not in framework_hints:
                     framework_hints.append(framework)
         
+        # Login/Auth keywords
+        login_keywords = ["log in", "login", "sign in", "signin", "start free"]
+        has_login = any(kw in html_lower for kw in login_keywords)
+
+        # Trust signals
+        trust_keywords = ["security", "soc2", "gdpr", "enterprise", "compliance", "iso 27001"]
+        has_trust = any(kw in html_lower for kw in trust_keywords)
+
         return {
             "title": title,
             "description": description,
             "h1_count": h1_count,
             "has_pricing_keywords": has_pricing,
             "has_docs_keywords": has_docs,
+            "has_login": has_login,
+            "has_trust": has_trust,
             "framework_hints": framework_hints,
             "html_bytes": html_bytes,
             "script_count": script_count,
@@ -255,6 +265,8 @@ def extract_wayback_signals(html: str) -> Dict[str, Any]:
             "h1_count": 0,
             "has_pricing_keywords": False,
             "has_docs_keywords": False,
+            "has_login": False,
+            "has_trust": False,
             "framework_hints": [],
             "html_bytes": 0,
             "script_count": 0,

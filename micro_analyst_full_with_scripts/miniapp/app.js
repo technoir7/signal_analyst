@@ -1045,6 +1045,7 @@ const cohortIncludeAnchorCheckbox = document.getElementById("cohort-include-anch
 const cohortProposeBtn = document.getElementById("cohort-propose-btn");
 const cohortConfirmBtn = document.getElementById("cohort-confirm-btn");
 const cohortAnalyzeBtn = document.getElementById("cohort-analyze-btn");
+const cohortDriftBtn = document.getElementById("cohort-drift-btn");
 const cohortResultsBtn = document.getElementById("cohort-results-btn");
 const cohortStatusBadge = document.getElementById("cohort-status-badge");
 const cohortProposalDiv = document.getElementById("cohort-proposal");
@@ -1085,13 +1086,19 @@ cohortProposeBtn?.addEventListener("click", async () => {
     proposedPeers = data.proposed_peers || [];
 
     // Render proposed peers with checkboxes
-    cohortProposalList.innerHTML = proposedPeers.map((peer, i) => `
-      <div class="cohort-item">
-        <input type="checkbox" id="peer-${i}" checked data-url="${peer.url}">
-        <label for="peer-${i}" class="cohort-item-url">${peer.url}</label>
-        <span class="cohort-item-name">${peer.name || ""}</span>
-      </div>
-    `).join("");
+    if (proposedPeers.length === 0) {
+      cohortProposalList.innerHTML = `<p style="padding: 12px; color: var(--text-muted); font-style: italic;">
+          No direct peers found for this target. You can proceed with just the anchor.
+        </p>`;
+    } else {
+      cohortProposalList.innerHTML = proposedPeers.map((peer, i) => `
+          <div class="cohort-item">
+            <input type="checkbox" id="peer-${i}" checked data-url="${peer.url}">
+            <label for="peer-${i}" class="cohort-item-url">${peer.url}</label>
+            <span class="cohort-item-name">${peer.name || ""}</span>
+          </div>
+        `).join("");
+    }
 
     cohortProposalDiv.style.display = "block";
     cohortConfirmedDiv.style.display = "none";
@@ -1112,9 +1119,10 @@ cohortConfirmBtn?.addEventListener("click", async () => {
 
   const checkboxes = cohortProposalList.querySelectorAll('input[type="checkbox"]:checked');
   const selectedUrls = Array.from(checkboxes).map(cb => cb.dataset.url);
+  const includeAnchor = cohortIncludeAnchorCheckbox.checked;
 
-  if (selectedUrls.length === 0) {
-    alert("Please select at least one peer");
+  if (selectedUrls.length === 0 && !includeAnchor) {
+    alert("Please select at least one peer (or include the anchor)");
     return;
   }
 
@@ -1123,7 +1131,7 @@ cohortConfirmBtn?.addEventListener("click", async () => {
 
   try {
     const data = await apiCall("POST", `/cohorts/${currentCohortId}/confirm`, {
-      selected_urls: selectedUrls,
+      final_urls: selectedUrls,
       include_anchor: cohortIncludeAnchorCheckbox.checked,
     });
 
@@ -1166,6 +1174,27 @@ cohortAnalyzeBtn?.addEventListener("click", async () => {
     cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
   } finally {
     cohortAnalyzeBtn.disabled = false;
+  }
+});
+
+cohortDriftBtn?.addEventListener("click", async () => {
+  if (!currentCohortId) {
+    alert("No cohort confirmed yet");
+    return;
+  }
+
+  setCohortStatus("loading", "ANALYZING DRIFT...");
+  cohortDriftBtn.disabled = true;
+
+  try {
+    await apiCall("POST", `/cohorts/${currentCohortId}/drift`);
+    setCohortStatus("idle", "DRIFT STARTED");
+    cohortResultsDiv.innerHTML = `<p>Drift analysis started (background). Click "Fetch Results" to check progress.</p>`;
+  } catch (err) {
+    setCohortStatus("error", "ERROR");
+    cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+  } finally {
+    cohortDriftBtn.disabled = false;
   }
 });
 
@@ -1216,6 +1245,25 @@ cohortResultsBtn?.addEventListener("click", async () => {
           </details>
         `;
       }
+
+      // Append Drift Report if available
+      if (data.drift_report_markdown) {
+        html += `<hr style="margin: 24px 0; border-top: 2px dashed var(--border-color);">`;
+        html += `<h3 style="margin-bottom: 12px; color: #a855f7;">🌊 Temporal Drift Analysis</h3>`;
+        html += renderMarkdown(data.drift_report_markdown);
+
+        // Add collapsible drift JSON
+        if (data.drift_matrix) {
+          html += `
+              <details class="json-collapsible">
+                <summary>View Drift Matrix JSON</summary>
+                <pre>${JSON.stringify(data.drift_matrix, null, 2)}</pre>
+              </details>
+            `;
+        }
+      }
+
+      cohortResultsDiv.innerHTML = html;
       setCohortStatus("idle", "COMPLETE");
     } else {
       cohortResultsDiv.innerHTML = `<p>Status: ${data.status}</p>`;

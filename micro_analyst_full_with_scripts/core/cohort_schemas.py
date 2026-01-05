@@ -3,7 +3,7 @@ Pydantic schemas for SaaS Cohort Mode v1.
 
 These models define the request/response shapes for cohort analysis endpoints.
 """
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -21,7 +21,7 @@ class CohortProposeRequest(BaseModel):
 
 class CohortConfirmRequest(BaseModel):
     """Request to confirm a cohort for analysis."""
-    final_urls: List[str] = Field(..., min_length=1, max_length=15, description="URLs to include in analysis")
+    final_urls: List[str] = Field(..., min_length=0, max_length=15, description="URLs to include in analysis")
     include_anchor: bool = Field(True, description="Whether to include anchor in analysis")
 
 
@@ -118,6 +118,13 @@ class CohortMatrix(BaseModel):
     anchor_deviations: List[str] = Field(default_factory=list, description="How anchor differs from norm")
 
 
+
+class CohortDriftResponse(BaseModel):
+    """Response from cohort drift analysis trigger."""
+    cohort_id: str
+    status: str = "analyzing_drift"
+
+
 class CohortResultsResponse(BaseModel):
     """Full cohort analysis results."""
     cohort_id: str
@@ -125,6 +132,11 @@ class CohortResultsResponse(BaseModel):
     status: str
     matrix: Optional[CohortMatrix] = None
     report_markdown: Optional[str] = None
+    
+    # Drift Extensions
+    drift_matrix: Optional[Dict[str, Any]] = None
+    drift_report_markdown: Optional[str] = None
+    
     cannot_validate: List[str] = Field(
         default_factory=lambda: [
             "Internal pricing or discount structures",

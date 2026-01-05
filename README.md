@@ -117,7 +117,8 @@ Signal Analyst now supports **Cohort Analysis**, allowing you to move from indiv
 
 ### **How it Works**
 1.  **Anchor Discovery**: Input one company URL; the system extracts category terms and probes **G2** and **Web Search** for competitors.
-2.  **Explicit Confirmation**: The user reviews the proposed peer list and confirms which targets to analyze.
+    *   *Note*: For niche targets, discovery may return zero peers. You can still proceed with **Anchor-only** analysis to establish a baseline.
+2.  **Explicit Confirmation**: The user reviews the proposed peer list and confirms which targets to analyze. Ensure at least one target (or the Anchor) is selected.
 3.  **Cross-Target Execution**: The system fans out existing single-URL probes to every target in the cohort.
 4.  **Signal Normalization (CMATRIX_001)**: Results are compressed into a boolean/categorical comparison matrix.
 
@@ -127,9 +128,15 @@ Signal Analyst now supports **Cohort Analysis**, allowing you to move from indiv
 - **Hiring/Ads/Social Activity**: Transformed into binary presence signals.
 - **SEO Hygiene**: Good/Fair/Poor rating based on structural metadata.
 
+### **Temporal Drift Analysis (New)**
+Quantifies how the cohort has evolved over the last year (T0 vs T-1). This can be triggered after a cohort is confirmed via the **"Run Drift Analysis"** button in the UI.
+- **Convergence**: Identify features that everyone is adopting (e.g., "80% added SSO").
+- **Divergence**: Spot where strategies represent a split (e.g., "Pricing transparency is mixed").
+- **Drift Signals**: Tracks Auth, Pricing, and Trust signal changes using Wayback Machine.
+
 ---
 
-## **6. API Interface**
+## **7. API Interface**
 
 ### **Single-URL Analysis**
 ```bash
@@ -165,6 +172,12 @@ curl -X POST http://localhost:8000/cohorts/{cohort_id}/analyze \
 **4. Retrieve Matrix & Report**
 ```bash
 curl http://localhost:8000/cohorts/{cohort_id}/results -H "X-API-Key: demo_key_abc123"
+```
+
+**5. (Optional) Drift Analysis**
+```bash
+curl -X POST http://localhost:8000/cohorts/{cohort_id}/drift \
+  -H "X-API-Key: demo_key_abc123"
 ```
 
 ---

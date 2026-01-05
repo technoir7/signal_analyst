@@ -92,9 +92,24 @@ def init_db() -> None:
             job_ids_json TEXT,
             matrix_json TEXT,
             report_md TEXT,
-            api_key TEXT
+            api_key TEXT,
+            drift_matrix_json TEXT,
+            drift_report_md TEXT
         )
     """)
+    
+    # -----------------------------------------------------------------------
+    # Schema Migrations (Idempotent)
+    # -----------------------------------------------------------------------
+    try:
+        cursor.execute("ALTER TABLE cohorts ADD COLUMN drift_matrix_json TEXT")
+    except sqlite3.OperationalError:
+        pass # Column likely exists
+        
+    try:
+        cursor.execute("ALTER TABLE cohorts ADD COLUMN drift_report_md TEXT")
+    except sqlite3.OperationalError:
+        pass # Column likely exists
     
     conn.commit()
     conn.close()
@@ -412,7 +427,9 @@ def save_cohort(
     job_ids: Optional[list] = None,
     matrix: Optional[Dict[str, Any]] = None,
     report_md: Optional[str] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    drift_matrix: Optional[Dict[str, Any]] = None,
+    drift_report_md: Optional[str] = None
 ) -> None:
     """Save or update a cohort in the database."""
     try:
@@ -425,8 +442,9 @@ def save_cohort(
         cursor.execute(
             """
             INSERT INTO cohorts (cohort_id, anchor_url, category_hint, status, created_at, updated_at,
-                                candidates_json, confirmed_urls_json, job_ids_json, matrix_json, report_md, api_key)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                candidates_json, confirmed_urls_json, job_ids_json, matrix_json, report_md, api_key,
+                                drift_matrix_json, drift_report_md)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(cohort_id) DO UPDATE SET
                 status = excluded.status,
                 updated_at = excluded.updated_at,
@@ -434,7 +452,9 @@ def save_cohort(
                 confirmed_urls_json = COALESCE(excluded.confirmed_urls_json, cohorts.confirmed_urls_json),
                 job_ids_json = COALESCE(excluded.job_ids_json, cohorts.job_ids_json),
                 matrix_json = COALESCE(excluded.matrix_json, cohorts.matrix_json),
-                report_md = COALESCE(excluded.report_md, cohorts.report_md)
+                report_md = COALESCE(excluded.report_md, cohorts.report_md),
+                drift_matrix_json = COALESCE(excluded.drift_matrix_json, cohorts.drift_matrix_json),
+                drift_report_md = COALESCE(excluded.drift_report_md, cohorts.drift_report_md)
             """,
             (
                 cohort_id,
@@ -448,7 +468,9 @@ def save_cohort(
                 json.dumps(job_ids) if job_ids else None,
                 json.dumps(matrix) if matrix else None,
                 report_md,
-                api_key
+                api_key,
+                json.dumps(drift_matrix) if drift_matrix else None,
+                drift_report_md
             )
         )
         
@@ -485,6 +507,8 @@ def get_cohort(cohort_id: str) -> Optional[Dict[str, Any]]:
                 "matrix": json.loads(row["matrix_json"]) if row["matrix_json"] else None,
                 "report_md": row["report_md"],
                 "api_key": row["api_key"],
+                "drift_matrix": json.loads(row["drift_matrix_json"]) if row["drift_matrix_json"] else None,
+                "drift_report_md": row["drift_report_md"],
             }
         return None
     except Exception as e:

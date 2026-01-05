@@ -50,6 +50,7 @@ start_service "MCP:Careers"      "uvicorn mcp_careers_intel.server:app --port 80
 echo "   • Starting Backend (:$BACKEND_PORT)..."
 (
   cd "$BACKEND_ROOT"
+  export ENABLE_WAYBACK=1
   exec uvicorn agent.micro_analyst:app --reload --port $BACKEND_PORT
 ) &
 BACKEND_PID=$!

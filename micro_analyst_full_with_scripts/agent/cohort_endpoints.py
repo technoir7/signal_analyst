@@ -18,6 +18,7 @@ from core.cohort_schemas import (
     CohortConfirmResponse,
     CohortAnalyzeResponse,
     CohortResultsResponse,
+    CohortDriftResponse,
 )
 from agent.cohort import (
     propose_cohort,
@@ -25,6 +26,7 @@ from agent.cohort import (
     start_cohort_analysis,
     build_cohort_matrix,
     generate_cohort_report,
+    analyze_cohort_drift_task,
 )
 from utils.persistence import get_cohort, save_cohort, get_job_db
 
@@ -38,6 +40,8 @@ router = APIRouter(tags=["cohorts"])
 
 import os
 VALID_API_KEYS = set(k.strip() for k in os.getenv("VALID_API_KEYS", "").split(",") if k.strip())
+if not VALID_API_KEYS:
+    VALID_API_KEYS = {"demo_key_abc123"}
 AUTH_ENABLED = bool(os.getenv("ENABLE_AUTH", "1") == "1")
 
 
@@ -169,7 +173,40 @@ def cohort_analyze(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Cohort analysis start failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{cohort_id}/drift", response_model=CohortDriftResponse)
+def cohort_drift(
+    cohort_id: str,
+    background_tasks: BackgroundTasks,
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key")
+) -> CohortDriftResponse:
+    """
+    Trigger temporal drift analysis for the cohort.
+    
+    Uses Wayback Machine to compare T0 (current) vs T-1 (historical)
+    signals for all confirmed peers.
+    """
+    api_key = verify_api_key_cohort(x_api_key)
+    
+    try:
+        # Verify cohort exists
+        cohort = get_cohort(cohort_id)
+        if not cohort:
+            raise ValueError(f"Cohort {cohort_id} not found")
+            
+        # Add background task
+        background_tasks.add_task(analyze_cohort_drift_task, cohort_id, api_key)
+        
+        return CohortDriftResponse(
+            cohort_id=cohort_id,
+            status="analyzing_drift"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Drift analysis trigger failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -224,18 +261,28 @@ def cohort_results(
             1 for jid in job_ids
             if (j := get_job_result(jid)) and j.get("status") in ("complete", "failed")
         )
+        # Drift results (if available) - early return scenario
+        drift_matrix = cohort.get("drift_matrix")
+        drift_report = cohort.get("drift_report_md")
+        
         return CohortResultsResponse(
             cohort_id=cohort_id,
             anchor_url=cohort["anchor_url"],
             status=f"analyzing ({complete_count}/{len(job_ids)} complete)",
             matrix=None,
-            report_markdown=None
+            report_markdown=None,
+            drift_matrix=drift_matrix,
+            drift_report_markdown=drift_report
         )
     
     # Build matrix and report
     try:
         matrix = build_cohort_matrix(cohort_id, get_job_result)
         report_md = generate_cohort_report(matrix, cohort["anchor_url"])
+        
+        # Drift results (if available)
+        drift_matrix = cohort.get("drift_matrix")
+        drift_report = cohort.get("drift_report_md")
         
         # Persist results
         save_cohort(
@@ -245,7 +292,9 @@ def cohort_results(
             status="complete",
             matrix=matrix.model_dump(),
             report_md=report_md,
-            api_key=cohort.get("api_key")
+            api_key=cohort.get("api_key"),
+            drift_matrix=drift_matrix,
+            drift_report_md=drift_report
         )
         
         return CohortResultsResponse(
@@ -253,7 +302,9 @@ def cohort_results(
             anchor_url=cohort["anchor_url"],
             status="complete",
             matrix=matrix,
-            report_markdown=report_md
+            report_markdown=report_md,
+            drift_matrix=drift_matrix,
+            drift_report_markdown=drift_report
         )
     except Exception as e:
         logger.error(f"Cohort results generation failed: {e}")

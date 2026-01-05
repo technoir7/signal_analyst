@@ -21,6 +21,8 @@ from core.cohort_schemas import (
 )
 from utils.cohort_discovery import discover_cohort, extract_domain
 from utils.persistence import save_cohort, get_cohort, update_cohort_status
+from utils.cohort_drift import analyze_cohort_drift
+from utils.cohort_synthesis import generate_cohort_report_markdown
 
 
 # ---------------------------------------------------------------------------
@@ -485,3 +487,76 @@ def generate_cohort_report(matrix: CohortMatrix, anchor_url: str) -> str:
     lines.append("\n_Absence of signals should not be interpreted as sophistication or prestige._\n")
     
     return "".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Cohort Drift Analysis (Background Task)
+# ---------------------------------------------------------------------------
+
+def analyze_cohort_drift_task(cohort_id: str, api_key: str) -> None:
+    """
+    Background task to analyze temporal drift for a cohort using Wayback Machine.
+    """
+    logger.info(f"[Cohort {cohort_id}] Starting temporal drift analysis...")
+    
+    # 1. Load Cohort
+    cohort = get_cohort(cohort_id)
+    if not cohort:
+        logger.error(f"[Cohort {cohort_id}] Cohort not found for drift analysis")
+        return
+        
+    confirmed_urls = cohort.get("confirmed_urls", [])
+    if not confirmed_urls:
+        logger.error(f"[Cohort {cohort_id}] No confirmed URLs for drift analysis")
+        return
+
+    # 2. Build peers list
+    peers = []
+    for u in confirmed_urls:
+        peers.append({
+            "url": u,
+            "name": extract_domain(u)
+        })
+        
+    # 3. Process Drift (Blocking but in background thread)
+    try:
+        profiles = analyze_cohort_drift(peers)
+        
+        # 4. Synthesize Report
+        cohort_name = f"Cohort for {cohort['anchor_url']}"
+        report_md = generate_cohort_report_markdown(cohort_name, profiles)
+        
+        # Serialize profiles for storage
+        profiles_data = []
+        for p in profiles:
+            profiles_data.append({
+                "url": p.url,
+                "name": p.name,
+                "has_history": p.has_history,
+                "t0_signals": p.t0_signals,
+                "t1_signals": p.t1_signals
+            })
+            
+        drift_matrix = {
+            "profiles": profiles_data,
+            "meta": {
+                "analyzed_count": len(profiles),
+                "timestamp": 123456789.0 # Placeholder or use real time
+            }
+        }
+        
+        # 5. Persist
+        save_cohort(
+            cohort_id=cohort_id,
+            anchor_url=cohort["anchor_url"],
+            category_hint=cohort["category_hint"],
+            status=cohort["status"], # Preserve status (or allow parallel status?)
+            drift_matrix=drift_matrix,
+            drift_report_md=report_md,
+            api_key=api_key
+        )
+        
+        logger.info(f"[Cohort {cohort_id}] Drift analysis completed and saved.")
+        
+    except Exception as e:
+        logger.error(f"[Cohort {cohort_id}] Drift analysis failed: {e}")

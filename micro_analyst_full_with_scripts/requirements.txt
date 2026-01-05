@@ -11,3 +11,4 @@ google-generativeai
 weasyprint
 markdown
 
+googlesearch-python
