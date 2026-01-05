@@ -845,81 +845,201 @@ body.app-body {
 /* KEYFRAMES – core -------------------------------------------------- */
 
 @keyframes core-breathe {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.12); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes core-breathe-intense {
-  0%   { transform: scale(1); }
-  45%  { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes core-flicker {
-  0%   { filter: brightness(1); }
-  50%  { filter: brightness(1.2); }
-  100% { filter: brightness(1); }
+  0% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.2);
+  }
+
+  100% {
+    filter: brightness(1);
+  }
 }
 
 @keyframes core-flicker-intense {
-  0%   { filter: brightness(1); }
-  33%  { filter: brightness(1.3); }
-  66%  { filter: brightness(0.9); }
-  100% { filter: brightness(1.25); }
+  0% {
+    filter: brightness(1);
+  }
+
+  33% {
+    filter: brightness(1.3);
+  }
+
+  66% {
+    filter: brightness(0.9);
+  }
+
+  100% {
+    filter: brightness(1.25);
+  }
 }
 
 @keyframes core-fade {
-  0%   { opacity: 0.1; }
-  40%  { opacity: 0.9; }
-  100% { opacity: 0.3; }
+  0% {
+    opacity: 0.1;
+  }
+
+  40% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0.3;
+  }
 }
 
 @keyframes core-fade-intense {
-  0%   { opacity: 0.4; }
-  40%  { opacity: 1; }
-  100% { opacity: 0.5; }
+  0% {
+    opacity: 0.4;
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes halo-pulse {
-  0%   { opacity: 0.25; transform: scale(1); }
-  50%  { opacity: 0.7;  transform: scale(1.1); }
-  100% { opacity: 0.3;  transform: scale(1); }
+  0% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
 }
 
 @keyframes halo-pulse-intense {
-  0%   { opacity: 0.5; transform: scale(1); }
-  50%  { opacity: 1;   transform: scale(1.18); }
-  100% { opacity: 0.6; transform: scale(1); }
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
 }
 
 @keyframes core-jitter {
-  0%   { transform: translate(0,0); }
-  20%  { transform: translate(1.5px, -0.5px); }
-  40%  { transform: translate(-1px, 1px); }
-  60%  { transform: translate(1px, 0.5px); }
-  80%  { transform: translate(-1.5px, -1px); }
-  100% { transform: translate(0,0); }
+  0% {
+    transform: translate(0, 0);
+  }
+
+  20% {
+    transform: translate(1.5px, -0.5px);
+  }
+
+  40% {
+    transform: translate(-1px, 1px);
+  }
+
+  60% {
+    transform: translate(1px, 0.5px);
+  }
+
+  80% {
+    transform: translate(-1.5px, -1px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 @keyframes core-tilt {
-  0%   { transform: rotate(0deg); }
-  50%  { transform: rotate(2deg); }
-  100% { transform: rotate(-2deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(2deg);
+  }
+
+  100% {
+    transform: rotate(-2deg);
+  }
 }
 
 /* KEYFRAMES – rings ------------------------------------------------- */
 
 @keyframes ring-expand-slow {
-  0%   { transform: scale(0.5); opacity: 0.7; }
-  60%  { transform: scale(1.6); opacity: 0.2; }
-  100% { transform: scale(1.8); opacity: 0; }
+  0% {
+    transform: scale(0.5);
+    opacity: 0.7;
+  }
+
+  60% {
+    transform: scale(1.6);
+    opacity: 0.2;
+  }
+
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
 }
 
 @keyframes ring-expand-fast {
-  0%   { transform: scale(0.4); opacity: 0.8; }
-  55%  { transform: scale(1.4); opacity: 0.25; }
-  100% { transform: scale(1.7); opacity: 0; }
+  0% {
+    transform: scale(0.4);
+    opacity: 0.8;
+  }
+
+  55% {
+    transform: scale(1.4);
+    opacity: 0.25;
+  }
+
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
 }
 
 /* --- PIPELINE (HIGH-MOTION VERSION) ------------------------------- */
@@ -937,11 +1057,9 @@ body.app-body {
   position: relative;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    rgba(148, 163, 184, 0.45),
-    rgba(148, 163, 184, 0.12)
-  );
+  background: linear-gradient(to right,
+      rgba(148, 163, 184, 0.45),
+      rgba(148, 163, 184, 0.12));
   overflow: hidden;
 }
 
@@ -949,12 +1067,10 @@ body.app-body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    120deg,
-    transparent,
-    rgba(255, 255, 255, 0.09),
-    transparent
-  );
+  background: linear-gradient(120deg,
+      transparent,
+      rgba(255, 255, 255, 0.09),
+      transparent);
   transform: translateX(-120%);
   opacity: 0.25;
   pointer-events: none;
@@ -976,12 +1092,10 @@ body.app-body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.05),
-    rgba(255, 255, 255, 0.22),
-    rgba(255, 255, 255, 0.05)
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.22),
+      rgba(255, 255, 255, 0.05));
   background-size: 220% 100%;
   opacity: 0.3;
   transform: translateX(0);
@@ -1084,62 +1198,132 @@ body.app-body {
 /* KEYFRAMES – shimmer + jitter -------------------------------------- */
 
 @keyframes progress-shimmer-soft {
-  0%   { transform: translateX(-20%); }
-  100% { transform: translateX(20%); }
+  0% {
+    transform: translateX(-20%);
+  }
+
+  100% {
+    transform: translateX(20%);
+  }
 }
 
 @keyframes track-shimmer-soft {
-  0%   { transform: translateX(-120%); }
-  100% { transform: translateX(120%); }
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
 }
 
 @keyframes progress-shimmer {
-  0%   { transform: translateX(-30%); }
-  100% { transform: translateX(30%); }
+  0% {
+    transform: translateX(-30%);
+  }
+
+  100% {
+    transform: translateX(30%);
+  }
 }
 
 @keyframes track-shimmer {
-  0%   { transform: translateX(-140%); }
-  100% { transform: translateX(140%); }
+  0% {
+    transform: translateX(-140%);
+  }
+
+  100% {
+    transform: translateX(140%);
+  }
 }
 
 @keyframes pipeline-jitter {
-  0%   { transform: translateX(0) translateY(0); }
-  25%  { transform: translateX(0.7px) translateY(-0.6px); }
-  50%  { transform: translateX(-0.9px) translateY(0.6px); }
-  75%  { transform: translateX(0.6px) translateY(0.4px); }
-  100% { transform: translateX(0) translateY(0); }
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+
+  25% {
+    transform: translateX(0.7px) translateY(-0.6px);
+  }
+
+  50% {
+    transform: translateX(-0.9px) translateY(0.6px);
+  }
+
+  75% {
+    transform: translateX(0.6px) translateY(0.4px);
+  }
+
+  100% {
+    transform: translateX(0) translateY(0);
+  }
 }
 
 /* KEYFRAMES – dots --------------------------------------------------- */
 
 @keyframes step-bounce {
-  0%   { transform: scale(1); box-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
-  50%  { transform: scale(1.12); box-shadow: 0 0 18px rgba(14, 165, 233, 0.9); }
-  100% { transform: scale(1); box-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+  }
+
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 18px rgba(14, 165, 233, 0.9);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+  }
 }
 
 @keyframes step-bounce-intense {
-  0%   { transform: scale(1) translateY(0); }
-  40%  { transform: scale(1.18) translateY(-1px); }
-  100% { transform: scale(1) translateY(0); }
+  0% {
+    transform: scale(1) translateY(0);
+  }
+
+  40% {
+    transform: scale(1.18) translateY(-1px);
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes step-error-flash {
-  0%   { filter: brightness(1); }
-  50%  { filter: brightness(1.4); }
-  100% { filter: brightness(1); }
+  0% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.4);
+  }
+
+  100% {
+    filter: brightness(1);
+  }
 }
 
 @keyframes completed-pop {
-  0%   { transform: scale(0.9); }
-  60%  { transform: scale(1.16); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.9);
+  }
+
+  60% {
+    transform: scale(1.16);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* RESPONSIVE-ish */
 
 @media (max-width: 1024px) {
+
   .row--inputs,
   .row--surface {
     flex-direction: column;
@@ -1148,8 +1332,9 @@ body.app-body {
   .card--trace {
     max-height: 220px;
   }
+
   /* === PIPELINE STAGE → TOOL LABELS (SUBTLE VERSION) ===================== */
-/* These are NEW classes. They DO NOT override any existing styling. */
+  /* These are NEW classes. They DO NOT override any existing styling. */
 
   .step-tools {
     margin-top: 2px;
@@ -1175,7 +1360,8 @@ body.app-body {
   .pipeline-step.step-heavy-load .step-dot {
     box-shadow: 0 0 10px rgba(79, 140, 255, 0.55);
   }
-/* === FIX: Pipeline stage tool labels (Option A subtle version) === */
+
+  /* === FIX: Pipeline stage tool labels (Option A subtle version) === */
 
   .step-tools {
     display: block;
@@ -1200,101 +1386,364 @@ body.app-body {
 
   /* === Pulse Variant Modes ========================================== */
 
-#agent-pulse.mode-a .pulse-core {
-  background: radial-gradient(circle,
-    rgba(70,140,255,0.9),
-    rgba(40,90,200,0.6)
-  );
-}
-#agent-pulse.mode-a .pulse-ring.outer {
-  animation: pulseA 1.2s infinite;
-}
+  #agent-pulse.mode-a .pulse-core {
+    background: radial-gradient(circle,
+        rgba(70, 140, 255, 0.9),
+        rgba(40, 90, 200, 0.6));
+  }
 
-#agent-pulse.mode-b .pulse-core {
-  background: radial-gradient(circle,
-    rgba(0,180,140,0.85),
-    rgba(0,140,100,0.6)
-  );
-}
-#agent-pulse.mode-b .pulse-ring.outer {
-  animation: pulseB 1.4s infinite;
-}
+  #agent-pulse.mode-a .pulse-ring.outer {
+    animation: pulseA 1.2s infinite;
+  }
 
-#agent-pulse.mode-c .pulse-core {
-  background: radial-gradient(circle,
-    rgba(255,90,120,0.9),
-    rgba(120,30,40,0.6)
-  );
-}
-#agent-pulse.mode-c .pulse-ring.outer {
-  animation: pulseC 1.0s infinite;
-}
+  #agent-pulse.mode-b .pulse-core {
+    background: radial-gradient(circle,
+        rgba(0, 180, 140, 0.85),
+        rgba(0, 140, 100, 0.6));
+  }
 
-@keyframes pulseA {
-  0%   { transform: scale(1);   opacity: 0.7; }
-  40%  { transform: scale(1.15); opacity: 1;   }
-  100% { transform: scale(1);   opacity: 0.7; }
-}
+  #agent-pulse.mode-b .pulse-ring.outer {
+    animation: pulseB 1.4s infinite;
+  }
 
-@keyframes pulseB {
-  0%   { transform: scale(1);     opacity: 0.7; }
-  50%  { transform: scale(1.25);   opacity: 0.9; }
-  100% { transform: scale(1);     opacity: 0.7; }
-}
+  #agent-pulse.mode-c .pulse-core {
+    background: radial-gradient(circle,
+        rgba(255, 90, 120, 0.9),
+        rgba(120, 30, 40, 0.6));
+  }
 
-@keyframes pulseC {
-  0%   { transform: scale(1);   opacity: 0.8; }
-  50%  { transform: scale(1.12); opacity: 1;   }
-  100% { transform: scale(1);   opacity: 0.8; }
-}
-/* ============================================================
+  #agent-pulse.mode-c .pulse-ring.outer {
+    animation: pulseC 1.0s infinite;
+  }
+
+  @keyframes pulseA {
+    0% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+
+    40% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes pulseB {
+    0% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+
+    50% {
+      transform: scale(1.25);
+      opacity: 0.9;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes pulseC {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+
+    50% {
+      transform: scale(1.12);
+      opacity: 1;
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+  }
+
+  /* ============================================================
    VIOLENT PULSE MODE — Agent Core
    ============================================================ */
 
-#agent-pulse {
-  transition: all 120ms cubic-bezier(0.1, 0.5, 0.3, 1);
+  #agent-pulse {
+    transition: all 120ms cubic-bezier(0.1, 0.5, 0.3, 1);
+  }
+
+  /* IDLE — calm, but not too zen */
+  #agent-pulse.idle {
+    background: radial-gradient(circle, #1e2530, #111821);
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+    transform: scale(0.95);
+  }
+
+  /* ACTIVE — high-frequency jitter, blue → green flickers */
+  #agent-pulse.active {
+    animation: violent-active-flicker 0.22s infinite;
+    transform: scale(1.1) rotate(0.6deg);
+  }
+
+  /* INTENSE — violent red surges, hard strobing, unstable scaling */
+  #agent-pulse.intense {
+    animation: violent-intense-strobe 0.13s infinite steps(2);
+    transform: scale(1.25) rotate(-1deg) skewX(1deg);
+    box-shadow:
+      0 0 24px rgba(255, 0, 0, 0.45),
+      0 0 48px rgba(255, 0, 0, 0.35),
+      0 0 64px rgba(255, 80, 40, 0.3);
+  }
+
+  /* Flicker: blue/green rapid pulse */
+  @keyframes violent-active-flicker {
+    0% {
+      background: radial-gradient(circle, #0affff, #005f5f);
+    }
+
+    25% {
+      background: radial-gradient(circle, #00ffaa, #004f2f);
+    }
+
+    50% {
+      background: radial-gradient(circle, #00d9ff, #003d5f);
+    }
+
+    75% {
+      background: radial-gradient(circle, #00ffcc, #004440);
+    }
+
+    100% {
+      background: radial-gradient(circle, #0affff, #005f5f);
+    }
+  }
+
+  /* Red strobe: violent heartbeat */
+  @keyframes violent-intense-strobe {
+    0% {
+      background: radial-gradient(circle, #ff1a1a, #3a0000);
+    }
+
+    43% {
+      background: radial-gradient(circle, #ff4d00, #5a0000);
+    }
+
+    51% {
+      background: radial-gradient(circle, #ff0000, #000000);
+    }
+
+    70% {
+      background: radial-gradient(circle, #ff3300, #2a0000);
+    }
+
+    100% {
+      background: radial-gradient(circle, #ff1a1a, #3a0000);
+    }
+  }
+
 }
 
-/* IDLE — calm, but not too zen */
-#agent-pulse.idle {
-  background: radial-gradient(circle, #1e2530, #111821);
-  box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
-  transform: scale(0.95);
+/* End of @media (max-width: 1024px) */
+
+/* ============================================================
+   TAB BAR + PANELS
+   ============================================================ */
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  width: fit-content;
 }
 
-/* ACTIVE — high-frequency jitter, blue → green flickers */
-#agent-pulse.active {
-  animation: violent-active-flicker 0.22s infinite;
-  transform: scale(1.1) rotate(0.6deg);
+.tab-btn {
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-/* INTENSE — violent red surges, hard strobing, unstable scaling */
-#agent-pulse.intense {
-  animation: violent-intense-strobe 0.13s infinite steps(2);
-  transform: scale(1.25) rotate(-1deg) skewX(1deg);
-  box-shadow:
-    0 0 24px rgba(255, 0, 0, 0.45),
-    0 0 48px rgba(255, 0, 0, 0.35),
-    0 0 64px rgba(255, 80, 40, 0.3);
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
 }
 
-/* Flicker: blue/green rapid pulse */
-@keyframes violent-active-flicker {
-  0%   { background: radial-gradient(circle, #0affff, #005f5f); }
-  25%  { background: radial-gradient(circle, #00ffaa, #004f2f); }
-  50%  { background: radial-gradient(circle, #00d9ff, #003d5f); }
-  75%  { background: radial-gradient(circle, #00ffcc, #004440); }
-  100% { background: radial-gradient(circle, #0affff, #005f5f); }
+.tab-btn--active {
+  background: var(--accent-soft);
+  color: var(--text-main);
+  border: 1px solid var(--accent);
 }
 
-/* Red strobe: violent heartbeat */
-@keyframes violent-intense-strobe {
-  0%   { background: radial-gradient(circle, #ff1a1a, #3a0000); }
-  43%  { background: radial-gradient(circle, #ff4d00, #5a0000); }
-  51%  { background: radial-gradient(circle, #ff0000, #000000); }
-  70%  { background: radial-gradient(circle, #ff3300, #2a0000); }
-  100% { background: radial-gradient(circle, #ff1a1a, #3a0000); }
+.tab-panel {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
 }
 
+.tab-panel--active {
+  display: flex;
+}
 
+/* ============================================================
+   COHORT STYLES
+   ============================================================ */
+
+.cohort-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.cohort-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-card-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.cohort-item:hover {
+  border-color: var(--accent);
+}
+
+.cohort-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.cohort-item-url {
+  flex: 1;
+  color: var(--text-main);
+  word-break: break-all;
+}
+
+.cohort-item-name {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.cohort-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.cohort-matrix th,
+.cohort-matrix td {
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+.cohort-matrix th {
+  background: var(--bg-card-soft);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.cohort-matrix td {
+  color: var(--text-main);
+}
+
+.cohort-matrix tr:hover td {
+  background: rgba(79, 140, 255, 0.05);
+}
+
+/* ============================================================
+   WAYBACK STYLES
+   ============================================================ */
+
+.wayback-notice {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  color: #ffc107;
+  font-size: 12px;
+}
+
+.wayback-notice p {
+  margin: 0;
+}
+
+.wayback-highlight {
+  background: rgba(79, 140, 255, 0.12);
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  margin: 12px 0;
+}
+
+/* Collapsible JSON viewer */
+.json-collapsible {
+  margin-top: 12px;
+}
+
+.json-collapsible summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  background: var(--bg-card-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.json-collapsible pre {
+  margin: 8px 0 0;
+  padding: 12px;
+  background: #050917;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* File Protocol Warning Banner */
+.file-protocol-warning {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #7c3aed, #6366f1);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.file-protocol-warning code {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.file-protocol-warning a {
+  color: #a5f3fc;
+  text-decoration: underline;
 }

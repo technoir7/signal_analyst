@@ -799,6 +799,513 @@ form.addEventListener("submit", async (evt) => {
 });
 
 // ---------------------------------------------------------------------
+// SETTINGS & API CONFIGURATION
+// ---------------------------------------------------------------------
+
+const DEFAULT_BASE_URL = "http://localhost:8000";
+
+function getBaseUrl() {
+  return localStorage.getItem("signal_analyst_base_url") || DEFAULT_BASE_URL;
+}
+
+function getApiKey() {
+  return localStorage.getItem("signal_analyst_api_key") || "";
+}
+
+function setBaseUrl(url) {
+  localStorage.setItem("signal_analyst_base_url", url);
+}
+
+function setApiKey(key) {
+  localStorage.setItem("signal_analyst_api_key", key);
+}
+
+// Centralized API helper with auth injection and robust error handling
+async function apiFetch(method, endpoint, body = null, options = {}) {
+  const baseUrl = getBaseUrl();
+  const apiKey = getApiKey();
+  const fullUrl = `${baseUrl}${endpoint}`;
+
+  const fetchOptions = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    ...options,
+  };
+
+  if (apiKey) {
+    fetchOptions.headers["X-API-Key"] = apiKey;
+  }
+
+  if (body && (method === "POST" || method === "PUT" || method === "PATCH")) {
+    fetchOptions.body = JSON.stringify(body);
+  }
+
+  // Log the request for debugging
+  console.log(`[API] ${method} ${fullUrl}`, body ? body : "");
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout || 300000); // 300s timeout for deep analysis
+    fetchOptions.signal = controller.signal;
+
+    const resp = await fetch(fullUrl, fetchOptions);
+    clearTimeout(timeoutId);
+
+    // Handle HTTP errors
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "(no response body)");
+      console.error(`[API] HTTP ${resp.status}: ${text}`);
+
+      if (resp.status === 401) {
+        throw new ApiError("Unauthorized - check your API key in Settings", "AUTH", resp.status);
+      }
+      if (resp.status === 403) {
+        throw new ApiError("Forbidden - API key lacks permissions", "AUTH", resp.status);
+      }
+      if (resp.status === 404) {
+        throw new ApiError(`Endpoint not found: ${endpoint}`, "NOT_FOUND", resp.status);
+      }
+      if (resp.status === 429) {
+        throw new ApiError("Rate limited - wait before retrying", "RATE_LIMIT", resp.status);
+      }
+      if (resp.status >= 500) {
+        throw new ApiError(`Server error: ${text}`, "SERVER", resp.status);
+      }
+      throw new ApiError(`HTTP ${resp.status}: ${text}`, "HTTP", resp.status);
+    }
+
+    return resp.json();
+
+  } catch (err) {
+    // Classify the error type
+    if (err instanceof ApiError) {
+      throw err;
+    }
+
+    if (err.name === "AbortError") {
+      console.error(`[API] Request timeout: ${fullUrl}`);
+      throw new ApiError(
+        `Request timed out after ${(options.timeout || 300000) / 1000}s. Deep analysis can take several minutes.`,
+        "TIMEOUT"
+      );
+    }
+
+    // Network errors (includes CORS blocks!)
+    if (err instanceof TypeError && err.message === "Failed to fetch") {
+      console.error(`[API] Network error: ${fullUrl}`, err);
+
+      // Check if we're on file:// protocol
+      const isFileProtocol = window.location.protocol === "file:";
+
+      let hint = `Could not connect to ${baseUrl}.`;
+
+      if (isFileProtocol) {
+        hint += `\n\n⚠️ You're loading this page from file://. CORS blocks requests from file:// origins.\n\nFix: Serve the frontend via HTTP:\n  cd miniapp && python3 -m http.server 8080\nThen open http://localhost:8080`;
+      } else {
+        hint += `\n\nPossible causes:\n• Backend not running (start with: uvicorn agent.micro_analyst:app --reload)\n• Wrong base URL (check Settings)\n• CORS blocking the request`;
+      }
+
+      throw new ApiError(hint, "NETWORK");
+    }
+
+    console.error(`[API] Unexpected error: ${fullUrl}`, err);
+    throw new ApiError(`Unexpected error: ${err.message}`, "UNKNOWN");
+  }
+}
+
+// Custom error class for API errors
+class ApiError extends Error {
+  constructor(message, type, statusCode = null) {
+    super(message);
+    this.name = "ApiError";
+    this.type = type; // CORS, NETWORK, TIMEOUT, AUTH, HTTP, SERVER, NOT_FOUND, RATE_LIMIT, UNKNOWN
+    this.statusCode = statusCode;
+  }
+}
+
+// Legacy wrapper for existing code
+async function apiCall(method, endpoint, body = null) {
+  return apiFetch(method, endpoint, body);
+}
+
+// Settings Modal
+const settingsBackdrop = document.getElementById("settings-backdrop");
+const settingsApiKeyInput = document.getElementById("settings-api-key");
+const settingsBaseUrlInput = document.getElementById("settings-base-url");
+const settingsSaveBtn = document.getElementById("settings-save-btn");
+const settingsCloseBtn = document.getElementById("settings-close-btn");
+const openSettingsBtn = document.getElementById("open-settings");
+const healthCheckBtn = document.getElementById("health-check-btn");
+const healthCheckResult = document.getElementById("health-check-result");
+const fileProtocolWarning = document.getElementById("file-protocol-warning");
+const dismissFileWarningBtn = document.getElementById("dismiss-file-warning");
+
+function openSettings() {
+  settingsApiKeyInput.value = getApiKey();
+  settingsBaseUrlInput.value = getBaseUrl();
+  settingsBackdrop.classList.add("cmdk-backdrop--visible");
+}
+
+function closeSettings() {
+  settingsBackdrop.classList.remove("cmdk-backdrop--visible");
+}
+
+openSettingsBtn?.addEventListener("click", openSettings);
+settingsCloseBtn?.addEventListener("click", closeSettings);
+settingsSaveBtn?.addEventListener("click", () => {
+  const key = settingsApiKeyInput.value.trim();
+  const url = settingsBaseUrlInput.value.trim() || DEFAULT_BASE_URL;
+  setApiKey(key);
+  setBaseUrl(url);
+  closeSettings();
+});
+settingsBackdrop?.addEventListener("click", (e) => {
+  if (e.target === settingsBackdrop) closeSettings();
+});
+
+// Health Check
+healthCheckBtn?.addEventListener("click", async () => {
+  healthCheckResult.textContent = "Checking...";
+  healthCheckResult.style.color = "var(--text-muted)";
+  healthCheckBtn.disabled = true;
+
+  try {
+    const baseUrl = settingsBaseUrlInput.value.trim() || getBaseUrl();
+    const start = performance.now();
+    const resp = await fetch(`${baseUrl}/health`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    const elapsed = Math.round(performance.now() - start);
+
+    if (resp.ok) {
+      healthCheckResult.textContent = `✅ Connected (${elapsed}ms)`;
+      healthCheckResult.style.color = "#22c55e";
+    } else {
+      healthCheckResult.textContent = `⚠️ HTTP ${resp.status}`;
+      healthCheckResult.style.color = "#f59e0b";
+    }
+  } catch (err) {
+    console.error("[Health Check] Failed:", err);
+    if (window.location.protocol === "file:") {
+      healthCheckResult.textContent = "❌ Failed (CORS from file://)";
+    } else {
+      healthCheckResult.textContent = "❌ Cannot connect";
+    }
+    healthCheckResult.style.color = "#ef4444";
+  } finally {
+    healthCheckBtn.disabled = false;
+  }
+});
+
+// File Protocol Warning
+function checkFileProtocol() {
+  if (window.location.protocol === "file:" && fileProtocolWarning) {
+    const dismissed = localStorage.getItem("file_protocol_warning_dismissed");
+    if (!dismissed) {
+      fileProtocolWarning.style.display = "block";
+    }
+  }
+}
+
+dismissFileWarningBtn?.addEventListener("click", () => {
+  localStorage.setItem("file_protocol_warning_dismissed", "1");
+  fileProtocolWarning.style.display = "none";
+});
+
+// ---------------------------------------------------------------------
+// TAB CONTROLLER
+// ---------------------------------------------------------------------
+
+const tabBtns = document.querySelectorAll(".tab-btn");
+const tabPanels = document.querySelectorAll(".tab-panel");
+
+function setActiveTab(tabName) {
+  tabBtns.forEach(btn => {
+    btn.classList.toggle("tab-btn--active", btn.dataset.tab === tabName);
+  });
+  tabPanels.forEach(panel => {
+    panel.classList.toggle("tab-panel--active", panel.id === `panel-${tabName}`);
+  });
+}
+
+tabBtns.forEach(btn => {
+  btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+});
+
+// ---------------------------------------------------------------------
+// COHORT WORKFLOW
+// ---------------------------------------------------------------------
+
+const cohortAnchorUrlInput = document.getElementById("cohort-anchor-url");
+const cohortCategoryInput = document.getElementById("cohort-category");
+const cohortIncludeAnchorCheckbox = document.getElementById("cohort-include-anchor");
+const cohortProposeBtn = document.getElementById("cohort-propose-btn");
+const cohortConfirmBtn = document.getElementById("cohort-confirm-btn");
+const cohortAnalyzeBtn = document.getElementById("cohort-analyze-btn");
+const cohortResultsBtn = document.getElementById("cohort-results-btn");
+const cohortStatusBadge = document.getElementById("cohort-status-badge");
+const cohortProposalDiv = document.getElementById("cohort-proposal");
+const cohortProposalList = document.getElementById("cohort-proposal-list");
+const cohortConfirmedDiv = document.getElementById("cohort-confirmed");
+const cohortConfirmedList = document.getElementById("cohort-confirmed-list");
+const cohortIdDisplay = document.getElementById("cohort-id-display");
+const cohortResultsDiv = document.getElementById("cohort-results");
+
+let currentCohortId = null;
+let proposedPeers = [];
+
+function setCohortStatus(status, label) {
+  cohortStatusBadge.classList.remove("badge-status--neutral", "badge-status--active", "badge-status--error");
+  if (status === "idle") cohortStatusBadge.classList.add("badge-status--neutral");
+  else if (status === "loading") cohortStatusBadge.classList.add("badge-status--active");
+  else if (status === "error") cohortStatusBadge.classList.add("badge-status--error");
+  cohortStatusBadge.textContent = label;
+}
+
+cohortProposeBtn?.addEventListener("click", async () => {
+  const anchorUrl = cohortAnchorUrlInput.value.trim();
+  if (!anchorUrl) {
+    alert("Please enter an anchor URL");
+    return;
+  }
+
+  setCohortStatus("loading", "PROPOSING...");
+  cohortProposeBtn.disabled = true;
+
+  try {
+    const data = await apiCall("POST", "/cohorts/propose", {
+      anchor_url: anchorUrl,
+      category_hint: cohortCategoryInput.value.trim() || null,
+    });
+
+    currentCohortId = data.cohort_id;
+    proposedPeers = data.proposed_peers || [];
+
+    // Render proposed peers with checkboxes
+    cohortProposalList.innerHTML = proposedPeers.map((peer, i) => `
+      <div class="cohort-item">
+        <input type="checkbox" id="peer-${i}" checked data-url="${peer.url}">
+        <label for="peer-${i}" class="cohort-item-url">${peer.url}</label>
+        <span class="cohort-item-name">${peer.name || ""}</span>
+      </div>
+    `).join("");
+
+    cohortProposalDiv.style.display = "block";
+    cohortConfirmedDiv.style.display = "none";
+    setCohortStatus("idle", "PROPOSED");
+  } catch (err) {
+    setCohortStatus("error", "ERROR");
+    cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+  } finally {
+    cohortProposeBtn.disabled = false;
+  }
+});
+
+cohortConfirmBtn?.addEventListener("click", async () => {
+  if (!currentCohortId) {
+    alert("No cohort proposed yet");
+    return;
+  }
+
+  const checkboxes = cohortProposalList.querySelectorAll('input[type="checkbox"]:checked');
+  const selectedUrls = Array.from(checkboxes).map(cb => cb.dataset.url);
+
+  if (selectedUrls.length === 0) {
+    alert("Please select at least one peer");
+    return;
+  }
+
+  setCohortStatus("loading", "CONFIRMING...");
+  cohortConfirmBtn.disabled = true;
+
+  try {
+    const data = await apiCall("POST", `/cohorts/${currentCohortId}/confirm`, {
+      selected_urls: selectedUrls,
+      include_anchor: cohortIncludeAnchorCheckbox.checked,
+    });
+
+    const confirmedUrls = data.confirmed_urls || selectedUrls;
+
+    // Show confirmed cohort
+    cohortConfirmedList.innerHTML = confirmedUrls.map(url => `
+      <div class="cohort-item">
+        <span class="cohort-item-url">${url}</span>
+      </div>
+    `).join("");
+
+    cohortIdDisplay.textContent = currentCohortId.slice(0, 8);
+    cohortProposalDiv.style.display = "none";
+    cohortConfirmedDiv.style.display = "block";
+    setCohortStatus("idle", "CONFIRMED");
+  } catch (err) {
+    setCohortStatus("error", "ERROR");
+    cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+  } finally {
+    cohortConfirmBtn.disabled = false;
+  }
+});
+
+cohortAnalyzeBtn?.addEventListener("click", async () => {
+  if (!currentCohortId) {
+    alert("No cohort confirmed yet");
+    return;
+  }
+
+  setCohortStatus("loading", "ANALYZING...");
+  cohortAnalyzeBtn.disabled = true;
+
+  try {
+    await apiCall("POST", `/cohorts/${currentCohortId}/analyze`);
+    setCohortStatus("idle", "ANALYZING");
+    cohortResultsDiv.innerHTML = `<p>Analysis started. Click "Fetch Results" to check progress.</p>`;
+  } catch (err) {
+    setCohortStatus("error", "ERROR");
+    cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+  } finally {
+    cohortAnalyzeBtn.disabled = false;
+  }
+});
+
+cohortResultsBtn?.addEventListener("click", async () => {
+  if (!currentCohortId) {
+    alert("No cohort to fetch results for");
+    return;
+  }
+
+  setCohortStatus("loading", "FETCHING...");
+  cohortResultsBtn.disabled = true;
+
+  try {
+    const data = await apiCall("GET", `/cohorts/${currentCohortId}/results`);
+
+    if (data.status === "pending" || data.status === "running") {
+      cohortResultsDiv.innerHTML = `<p>Analysis in progress (${data.progress || 0}%). Click "Fetch Results" again.</p>`;
+      setCohortStatus("idle", "IN PROGRESS");
+    } else if (data.status === "complete") {
+      // Render matrix
+      const matrix = data.matrix || [];
+      if (matrix.length > 0) {
+        const headers = Object.keys(matrix[0]);
+        let html = '<table class="cohort-matrix"><thead><tr>';
+        headers.forEach(h => { html += `<th>${h}</th>`; });
+        html += '</tr></thead><tbody>';
+        matrix.forEach(row => {
+          html += '<tr>';
+          headers.forEach(h => { html += `<td>${row[h] ?? "-"}</td>`; });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        // Add collapsible raw JSON
+        html += `
+          <details class="json-collapsible">
+            <summary>View Raw JSON</summary>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          </details>
+        `;
+
+        cohortResultsDiv.innerHTML = html;
+      } else {
+        cohortResultsDiv.innerHTML = `<p>No matrix data available.</p>
+          <details class="json-collapsible">
+            <summary>View Raw JSON</summary>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          </details>
+        `;
+      }
+      setCohortStatus("idle", "COMPLETE");
+    } else {
+      cohortResultsDiv.innerHTML = `<p>Status: ${data.status}</p>`;
+      setCohortStatus("idle", data.status?.toUpperCase() || "UNKNOWN");
+    }
+  } catch (err) {
+    setCohortStatus("error", "ERROR");
+    cohortResultsDiv.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+  } finally {
+    cohortResultsBtn.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------
+// WAYBACK WORKFLOW
+// ---------------------------------------------------------------------
+
+const waybackUrlInput = document.getElementById("wayback-url");
+const waybackFocusInput = document.getElementById("wayback-focus");
+const waybackAnalyzeBtn = document.getElementById("wayback-analyze-btn");
+const waybackStatusBadge = document.getElementById("wayback-status-badge");
+const waybackNotice = document.getElementById("wayback-notice");
+const waybackReport = document.getElementById("wayback-report");
+
+function setWaybackStatus(status, label) {
+  waybackStatusBadge.classList.remove("badge-status--neutral", "badge-status--active", "badge-status--error");
+  if (status === "idle") waybackStatusBadge.classList.add("badge-status--neutral");
+  else if (status === "loading") waybackStatusBadge.classList.add("badge-status--active");
+  else if (status === "error") waybackStatusBadge.classList.add("badge-status--error");
+  waybackStatusBadge.textContent = label;
+}
+
+function highlightWaybackSection(html) {
+  // Wrap Wayback section in highlight
+  return html.replace(
+    /(<h2[^>]*>.*?(?:Wayback|Change Over Time).*?<\/h2>)/gi,
+    '<div class="wayback-highlight">$1'
+  ).replace(
+    /(<h2[^>]*>(?!.*(?:Wayback|Change Over Time)))/gi,
+    '</div>$1'
+  );
+}
+
+waybackAnalyzeBtn?.addEventListener("click", async () => {
+  const url = waybackUrlInput.value.trim();
+  if (!url) {
+    alert("Please enter a company URL");
+    return;
+  }
+
+  setWaybackStatus("loading", "ANALYZING...");
+  waybackAnalyzeBtn.disabled = true;
+  waybackNotice.style.display = "none";
+
+  try {
+    const data = await apiCall("POST", "/analyze", {
+      company_url: url,
+      focus: waybackFocusInput.value.trim() || "wayback change detection",
+    });
+
+    const reportMd = data.report_markdown || "";
+    let reportHtml = renderMarkdown(reportMd);
+
+    // Check if Wayback section exists
+    if (reportMd.toLowerCase().includes("wayback") || reportMd.toLowerCase().includes("change over time")) {
+      reportHtml = highlightWaybackSection(reportHtml);
+    } else {
+      // Show notice that Wayback may not be enabled
+      waybackNotice.style.display = "block";
+    }
+
+    // Add collapsible profile JSON
+    reportHtml += `
+      <details class="json-collapsible">
+        <summary>View Profile JSON</summary>
+        <pre>${JSON.stringify(data.profile, null, 2)}</pre>
+      </details>
+    `;
+
+    waybackReport.innerHTML = reportHtml;
+    setWaybackStatus("idle", "COMPLETE");
+  } catch (err) {
+    setWaybackStatus("error", "ERROR");
+    waybackReport.innerHTML = `<p style="color: var(--danger);">Error: ${err.message}</p>`;
+  } finally {
+    waybackAnalyzeBtn.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------
 // INITIALIZATION
 // ---------------------------------------------------------------------
 
@@ -823,4 +1330,16 @@ form.addEventListener("submit", async (evt) => {
   setAgentPulseState("idle", "Idle — ready for next target");
   setPipelineRunning(false);
   resetPipeline();
+
+  // Initialize with Single tab active
+  setActiveTab("single");
+
+  // Check if running from file:// and show warning
+  checkFileProtocol();
+
+  // Load settings from localStorage
+  if (!getApiKey()) {
+    // Prompt for API key on first visit (optional)
+    // openSettings();
+  }
 })();

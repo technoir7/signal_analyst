@@ -45,7 +45,21 @@ The **Inferred Profile** is passed to the LLM (Gemini or Ollama) to produce the 
 
 ---
 
-## **3. Quick Start**
+## **3. Quick Start (One Command)**
+
+For rapid local development, use the combined dev runner:
+
+```bash
+chmod +x run_dev.sh
+./run_dev.sh
+```
+
+*   **Frontend**: [http://localhost:8080](http://localhost:8080)
+*   **Backend**: [http://localhost:8000](http://localhost:8000)
+
+---
+
+## **4. Detailed Setup**
 
 ```bash
 cd micro_analyst_full_with_scripts
@@ -75,7 +89,7 @@ python3 -m http.server 8080
 
 ---
 
-## **4. Persistence & Strategic Change Detection**
+## **5. Persistence & Strategic Change Detection**
 
 Signal Analyst is hardened for production deployment, moving beyond "toy" status with several critical safeguards:
 
@@ -97,7 +111,7 @@ Signal Analyst is hardened for production deployment, moving beyond "toy" status
 
 ---
 
-## **5. SaaS Cohort Mode (v1)**
+## **6. SaaS Cohort Mode (v1)**
 
 Signal Analyst now supports **Cohort Analysis**, allowing you to move from individual target research to peer-group benchmarking. This mode uses a **Propose → Confirm → Execute** workflow to ensure discovery is both autonomous and auditable.
 
@@ -155,7 +169,7 @@ curl http://localhost:8000/cohorts/{cohort_id}/results -H "X-API-Key: demo_key_a
 
 ---
 
-## **7. Report Modes**
+## **8. Report Modes**
 
 Signal Analyst can adopt different "Persona Filters" during synthesis:
 
@@ -169,7 +183,7 @@ Signal Analyst can adopt different "Persona Filters" during synthesis:
 
 ---
 
-## **8. Architecture Diagram**
+## **9. Architecture Diagram**
 
 ```mermaid
 graph TD
@@ -198,7 +212,7 @@ graph TD
 
 ---
 
-## **9. Verification & Testing**
+## **10. Verification & Testing**
 
 To ensure the interpretive inference layer remains robust and honest, run the automated test suite:
 
@@ -215,7 +229,7 @@ This suite validates:
 
 ---
 
-## **10. Deployment Notes**
+## **11. Deployment Notes**
 
 *   **PDF Export**: Requires system-level dependencies for `WeasyPrint` (`brew install pango cairo`). If missing, the system gracefully disables PDF export while maintaining all other functionality.
 *   **Proxy Rotation**: For high-volume professional use, we recommend wrapping the `web_scrape` service in a proxy rotation layer (e.g., BrightData or ScraperAPI) to bypass advanced bot detection.

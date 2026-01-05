@@ -1,65 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Signal-Analyst | OSINT Intelligence Console</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="preconnect" href="https://rsms.me/" />
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
-  </head>
 
-  <body class="app-body">
-    <div class="app-shell">
-      <!-- LEFT SIDEBAR -->
-      <aside class="sidebar">
-        <div class="sidebar-logo">
-          <div class="sidebar-logo-mark">µ</div>
-          <div class="sidebar-logo-text">
-            <div class="sidebar-logo-title">Micro-Analyst</div>
-            <div class="sidebar-logo-subtitle">OSINT Console</div>
+<head>
+  <meta charset="UTF-8" />
+  <title>Signal-Analyst | OSINT Intelligence Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://rsms.me/" />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+</head>
+
+<body class="app-body">
+  <div class="app-shell">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-mark">µ</div>
+        <div class="sidebar-logo-text">
+          <div class="sidebar-logo-title">Micro-Analyst</div>
+          <div class="sidebar-logo-subtitle">OSINT Console</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-icon-button nav-icon-button--active" title="OSINT Console">
+          <span class="nav-dot"></span>
+        </button>
+        <button class="nav-icon-button" title="History (stub)">
+          <span class="nav-line"></span>
+        </button>
+        <button class="nav-icon-button" id="open-settings" title="Settings">
+          <span class="nav-grid"></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-icon-button" id="open-command-palette" title="Keyboard shortcuts">
+          <span class="nav-key">?</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN PANEL -->
+    <main class="main-panel">
+      <!-- HEADER -->
+      <header class="app-header">
+        <div class="app-header-main">
+          <div>
+            <div class="label-mono">OSINT INTELLIGENCE AGENT</div>
+            <h1 class="app-title">Signal-Analyst</h1>
           </div>
         </div>
+        <p class="subtitle">
+          Feed a company surface (URL, name, intent). Watch the agent plan its tools,
+          interrogate the stack, and assemble an OSINT-grade report in real time.
+        </p>
+      </header>
 
-        <nav class="sidebar-nav">
-          <button class="nav-icon-button nav-icon-button--active" title="OSINT Console">
-            <span class="nav-dot"></span>
-          </button>
-          <button class="nav-icon-button" title="History (stub)">
-            <span class="nav-line"></span>
-          </button>
-          <button class="nav-icon-button" title="Settings (stub)">
-            <span class="nav-grid"></span>
-          </button>
-        </nav>
+      <!-- TAB BAR -->
+      <nav class="tab-bar" id="tab-bar">
+        <button class="tab-btn tab-btn--active" data-tab="single">Single URL</button>
+        <button class="tab-btn" data-tab="cohort">Cohort</button>
+        <button class="tab-btn" data-tab="wayback">Wayback</button>
+      </nav>
 
-        <div class="sidebar-footer">
-          <button
-            class="nav-icon-button"
-            id="open-command-palette"
-            title="Keyboard shortcuts"
-          >
-            <span class="nav-key">?</span>
-          </button>
-        </div>
-      </aside>
-
-      <!-- MAIN PANEL -->
-      <main class="main-panel">
-        <!-- HEADER -->
-        <header class="app-header">
-          <div class="app-header-main">
-            <div>
-              <div class="label-mono">OSINT INTELLIGENCE AGENT</div>
-              <h1 class="app-title">Signal-Analyst</h1>
-            </div>
-          </div>
-          <p class="subtitle">
-            Feed a company surface (URL, name, intent). Watch the agent plan its tools,
-            interrogate the stack, and assemble an OSINT-grade report in real time.
-          </p>
-        </header>
-
+      <!-- ================================================================ -->
+      <!-- TAB PANEL: SINGLE (Original unchanged functionality) -->
+      <!-- ================================================================ -->
+      <div class="tab-panel tab-panel--active" id="panel-single">
         <!-- ROW 1: INPUTS + PLAN -->
         <section class="row row--inputs">
           <!-- INPUT CARD -->
@@ -74,45 +82,27 @@
             <form id="analyze-form" class="form-grid">
               <div class="form-field">
                 <label for="company_name">Company Name</label>
-                <input
-                  id="company_name"
-                  name="company_name"
-                  type="text"
-                  placeholder="e.g. Blue Bottle Coffee"
-                  autocomplete="off"
-                />
+                <input id="company_name" name="company_name" type="text" placeholder="e.g. Blue Bottle Coffee"
+                  autocomplete="off" />
               </div>
 
               <div class="form-field">
                 <label for="company_url">Primary URL<span class="hint"> (recommended)</span></label>
-                <input
-                  id="company_url"
-                  name="company_url"
-                  type="url"
-                  placeholder="https://example.com"
-                  autocomplete="off"
-                />
+                <input id="company_url" name="company_url" type="url" placeholder="https://example.com"
+                  autocomplete="off" />
               </div>
 
               <div class="form-field">
                 <label for="focus">Analyst Focus<span class="hint"> (optional)</span></label>
-                <input
-                  id="focus"
-                  name="focus"
-                  type="text"
-                  placeholder="e.g. growth marketing &amp; paid ads risk"
-                  autocomplete="off"
-                />
+                <input id="focus" name="focus" type="text" placeholder="e.g. growth marketing &amp; paid ads risk"
+                  autocomplete="off" />
               </div>
 
               <div class="form-field">
                 <label for="report_style">Report Mode</label>
                 <select id="report_style" name="report_style" class="select-field">
                   <option value="standard">Operator brief (default)</option>
-                  <!-- <option value="red_team">Red Team / Adversarial</option> -->
-                  <!-- NEW: narrative mode -->
                   <option value="narrative">Narrative report (article-style)</option>
-                  <!-- existing -->
                   <option value="investor_brief">Investor Brief</option>
                   <option value="founder_playbook">Founder / Operator Playbook</option>
                 </select>
@@ -187,8 +177,6 @@
           <section class="card card--surface" id="osint-surface-card">
             <header class="card-header">
               <h3>Live agent activity monitor</h3>
-              <!-- <h2>OSINT Surface Snapshot</h2> -->
-              <!-- <p class="card-subtitle">Live agent activity monitor</p> -->
             </header>
 
             <div id="agent-pulse" class="agent-pulse idle">
@@ -227,10 +215,7 @@
           <section class="card card--trace">
             <header class="card-header">
               <span class="card-label">AGENT TRACE</span>
-              <span
-                class="card-status badge-status badge-status--neutral"
-                id="cot-status-badge"
-              >
+              <span class="card-status badge-status badge-status--neutral" id="cot-status-badge">
                 AWAITING INPUT
               </span>
             </header>
@@ -255,10 +240,7 @@
               </div>
               <div class="report-meta-item">
                 <span class="report-meta-label">Status</span>
-                <span
-                  class="badge-status badge-status--neutral"
-                  id="report-status-badge"
-                >
+                <span class="badge-status badge-status--neutral" id="report-status-badge">
                   Ready
                 </span>
               </div>
@@ -270,36 +252,194 @@
             </article>
           </section>
         </section>
-      </main>
-    </div>
+      </div>
 
-    <!-- COMMAND PALETTE -->
-    <div class="cmdk-backdrop" id="cmdk-backdrop">
-      <div class="cmdk-panel">
-        <div class="cmdk-header">
-          <input
-            id="cmdk-input"
-            class="cmdk-input"
-            type="text"
-            placeholder="Type a command (e.g. 'load_blue_bottle', 'focus_growth')"
-          />
-          <span class="cmdk-hint" id="cmdk-hint">Enter to execute · Esc to close</span>
+      <!-- ================================================================ -->
+      <!-- TAB PANEL: COHORT -->
+      <!-- ================================================================ -->
+      <div class="tab-panel" id="panel-cohort">
+        <section class="row">
+          <section class="card card--input" style="flex: 1;">
+            <header class="card-header">
+              <span class="card-label">COHORT ANALYSIS</span>
+              <span class="badge-status badge-status--neutral" id="cohort-status-badge">IDLE</span>
+            </header>
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="cohort-anchor-url">Anchor URL</label>
+                <input id="cohort-anchor-url" type="url" placeholder="https://example.com" />
+              </div>
+              <div class="form-field">
+                <label for="cohort-category">Category Hint <span class="hint">(optional)</span></label>
+                <input id="cohort-category" type="text" placeholder="e.g. enterprise SaaS" />
+              </div>
+              <div class="form-field form-field--row">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="cohort-include-anchor" checked />
+                  <span>Include anchor in cohort</span>
+                </label>
+                <button type="button" class="primary-button" id="cohort-propose-btn">Propose Cohort</button>
+              </div>
+            </div>
+
+            <!-- Proposed cohort selection -->
+            <div id="cohort-proposal" class="cohort-proposal" style="display: none;">
+              <header class="card-header" style="margin-top: 16px;">
+                <span class="card-label">PROPOSED PEERS</span>
+              </header>
+              <div id="cohort-proposal-list" class="cohort-list"></div>
+              <div class="form-field form-field--row" style="margin-top: 12px;">
+                <button type="button" class="primary-button" id="cohort-confirm-btn">Confirm Selection</button>
+              </div>
+            </div>
+
+            <!-- Confirmed cohort actions -->
+            <div id="cohort-confirmed" class="cohort-confirmed" style="display: none;">
+              <header class="card-header" style="margin-top: 16px;">
+                <span class="card-label">CONFIRMED COHORT</span>
+                <span id="cohort-id-display" class="badge-status badge-status--neutral"></span>
+              </header>
+              <div id="cohort-confirmed-list" class="cohort-list"></div>
+              <div class="form-field form-field--row" style="margin-top: 12px; gap: 8px;">
+                <button type="button" class="primary-button" id="cohort-analyze-btn">Analyze Cohort</button>
+                <button type="button" class="primary-button" id="cohort-results-btn"
+                  style="background: linear-gradient(135deg, #22c55e, #4ade80);">Fetch Results</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- Cohort Results -->
+        <section class="row row--report" style="margin-top: 16px;">
+          <section class="card card--report" style="flex: 1;">
+            <header class="card-header">
+              <span class="card-label">COHORT RESULTS</span>
+            </header>
+            <div id="cohort-results" class="report-output markdown-body" style="max-height: 500px;">
+              <p class="placeholder">Propose and analyze a cohort to see comparative results.</p>
+            </div>
+          </section>
+        </section>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- TAB PANEL: WAYBACK -->
+      <!-- ================================================================ -->
+      <div class="tab-panel" id="panel-wayback">
+        <section class="row">
+          <section class="card card--input" style="flex: 1;">
+            <header class="card-header">
+              <span class="card-label">WAYBACK CHANGE DETECTION</span>
+              <span class="badge-status badge-status--neutral" id="wayback-status-badge">IDLE</span>
+            </header>
+
+            <div class="form-grid">
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label for="wayback-url">Company URL</label>
+                <input id="wayback-url" type="url" placeholder="https://example.com" />
+              </div>
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label for="wayback-focus">Focus <span class="hint">(defaults to change detection)</span></label>
+                <input id="wayback-focus" type="text" placeholder="wayback change detection"
+                  value="wayback change detection" />
+              </div>
+              <div class="form-field form-field--row">
+                <button type="button" class="primary-button" id="wayback-analyze-btn">Analyze (Wayback)</button>
+              </div>
+            </div>
+
+            <div id="wayback-notice" class="wayback-notice" style="display: none;">
+              <p>⚠️ Wayback feature may not be enabled on the server (ENABLE_WAYBACK=0). The report may not include
+                historical snapshots.</p>
+            </div>
+          </section>
+        </section>
+
+        <!-- Wayback Report -->
+        <section class="row row--report" style="margin-top: 16px;">
+          <section class="card card--report" style="flex: 1;">
+            <header class="card-header">
+              <span class="card-label">WAYBACK REPORT</span>
+            </header>
+            <div id="wayback-report" class="report-output markdown-body" style="max-height: 600px;">
+              <p class="placeholder">Enter a URL and click Analyze to see historical change detection.</p>
+            </div>
+          </section>
+        </section>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- FILE PROTOCOL WARNING BANNER -->
+  <div id="file-protocol-warning" class="file-protocol-warning" style="display: none;">
+    <strong>⚠️ Local File Mode</strong>: You're loading this page from <code>file://</code>.
+    API requests may fail due to CORS.
+    <br>Fix: <code>cd miniapp && python3 -m http.server 8080</code> then open <a
+      href="http://localhost:8080">http://localhost:8080</a>
+    <button id="dismiss-file-warning" style="margin-left: 12px; padding: 2px 8px; cursor: pointer;">Dismiss</button>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="cmdk-backdrop" id="settings-backdrop">
+    <div class="cmdk-panel">
+      <div class="cmdk-header">
+        <h3 style="margin: 0 0 12px; font-size: 16px;">Settings</h3>
+      </div>
+      <div class="cmdk-body" style="max-height: none;">
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label for="settings-api-key">API Key</label>
+          <input id="settings-api-key" type="password" placeholder="demo_key_abc123" />
         </div>
-        <div class="cmdk-body">
-          <ul class="cmdk-list" id="cmdk-list">
-            <li>load_blue_bottle — Load Blue Bottle demo profile</li>
-            <li>load_sweetgreen — Load Sweetgreen demo profile</li>
-            <li>load_glossier — Load Glossier demo profile</li>
-            <li>toggle_demo — Toggle demo mode on/off</li>
-            <li>focus_growth — Focus on growth marketing &amp; paid ads risk</li>
-            <li>focus_reputation — Focus on reputation &amp; reviews</li>
-            <li>focus_hiring — Focus on hiring &amp; org structure</li>
-          </ul>
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label for="settings-base-url">Backend Base URL</label>
+          <input id="settings-base-url" type="url" placeholder="http://localhost:8000" />
+        </div>
+
+        <!-- Health Check -->
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label>Backend Connectivity</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button type="button" class="primary-button" id="health-check-btn"
+              style="background: linear-gradient(135deg, #22c55e, #4ade80);">Test Connection</button>
+            <span id="health-check-result" style="font-size: 12px; color: var(--text-muted);"></span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="primary-button" id="settings-save-btn">Save</button>
+          <button type="button" class="primary-button" id="settings-close-btn"
+            style="background: #334155;">Close</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <script src="demo_data.js"></script>
-    <script src="app.js"></script>
-  </body>
+  <!-- COMMAND PALETTE -->
+  <div class="cmdk-backdrop" id="cmdk-backdrop">
+    <div class="cmdk-panel">
+      <div class="cmdk-header">
+        <input id="cmdk-input" class="cmdk-input" type="text"
+          placeholder="Type a command (e.g. 'load_blue_bottle', 'focus_growth')" />
+        <span class="cmdk-hint" id="cmdk-hint">Enter to execute · Esc to close</span>
+      </div>
+      <div class="cmdk-body">
+        <ul class="cmdk-list" id="cmdk-list">
+          <li>load_blue_bottle — Load Blue Bottle demo profile</li>
+          <li>load_sweetgreen — Load Sweetgreen demo profile</li>
+          <li>load_glossier — Load Glossier demo profile</li>
+          <li>toggle_demo — Toggle demo mode on/off</li>
+          <li>focus_growth — Focus on growth marketing &amp; paid ads risk</li>
+          <li>focus_reputation — Focus on reputation &amp; reviews</li>
+          <li>focus_hiring — Focus on hiring &amp; org structure</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="demo_data.js"></script>
+  <script src="app.js"></script>
+</body>
+
 </html>

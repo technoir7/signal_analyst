@@ -55,6 +55,34 @@ logger.info(
     bool(os.getenv("GOOGLE_API_KEY")),
 )
 
+# ---------------------------------------------------------------------------
+# Datetime parsing helper (handles with/without microseconds)
+# ---------------------------------------------------------------------------
+def _parse_datetime(value):
+    """Parse datetime from string or return as-is if already datetime."""
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str):
+        return datetime.utcnow()
+    
+    # Try formats in order: with microseconds, without
+    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    
+    # Fallback: strip microseconds if present
+    if "." in value:
+        value = value.split(".")[0]
+        try:
+            return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            pass
+    
+    logger.warning(f"Could not parse datetime: {value}")
+    return datetime.utcnow()
+
 app = FastAPI(title="Micro Analyst Agent")
 
 # CORS configuration (Default to strict in prod, configurable via env)
@@ -664,7 +692,7 @@ def _run_analysis_task(job_id: str, req: AnalyzeRequest, api_key: str) -> None:
             
             if history:
                 prev_report = history[0] # The most recent one
-                prev_date = datetime.strptime(prev_report["created_at"], "%Y-%m-%d %H:%M:%S") if isinstance(prev_report["created_at"], str) else prev_report["created_at"]
+                prev_date = _parse_datetime(prev_report["created_at"])
                 
                 # We need to reconstruct InferredProfile from the JSON dict
                 prev_profile_dict = prev_report["profile"]
@@ -916,7 +944,7 @@ def analyze(req: AnalyzeRequest, api_key: str = Header(None, alias="X-API-Key"))
         history = get_latest_reports(req.company_url, limit=1)
         if history:
             prev_report = history[0]
-            prev_date = datetime.strptime(prev_report["created_at"], "%Y-%m-%d %H:%M:%S") if isinstance(prev_report["created_at"], str) else prev_report["created_at"]
+            prev_date = _parse_datetime(prev_report["created_at"])
             prev_profile = InferredProfile(**prev_report["profile"])
             change_detector = ChangeDetector()
             delta_report = change_detector.compute_delta(
