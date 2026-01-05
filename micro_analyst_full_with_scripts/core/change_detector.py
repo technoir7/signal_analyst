@@ -134,3 +134,45 @@ class ChangeDetector:
 
     def _diff_seo(self, curr: SignalInference, prev: SignalInference) -> List[SignalShift]:
         return self._diff_section_status(curr, prev, "SEO Diagnostics")
+
+
+# ---------------------------------------------------------------------------
+# Delta to Markdown Converter
+# ---------------------------------------------------------------------------
+
+def delta_to_markdown(delta: Optional[DeltaReport]) -> str:
+    """
+    Convert a DeltaReport to a markdown section for appending to reports.
+    
+    Returns:
+        - Markdown section "## Change Since Last Snapshot" with shift details
+        - Empty string if delta is None (no prior snapshot)
+    """
+    if delta is None:
+        return "\n\n## Change Since Last Snapshot\n\nNo prior snapshot available.\n"
+    
+    lines = ["\n\n## Change Since Last Snapshot\n"]
+    
+    # Header with timing
+    elapsed_str = f"{delta.time_elapsed_days:.1f} days" if delta.time_elapsed_days >= 1 else f"{delta.time_elapsed_days * 24:.1f} hours"
+    lines.append(f"_Comparing against snapshot from {delta.baseline_date.strftime('%Y-%m-%d %H:%M')} UTC ({elapsed_str} ago)_\n\n")
+    
+    if not delta.shifts:
+        lines.append("**No significant changes detected.** The target's digital posture remains stable.\n")
+    else:
+        lines.append("### Detected Shifts\n\n")
+        for shift in delta.shifts:
+            # Emoji indicator based on shift type
+            emoji = {
+                "stability": "➖",
+                "volatility": "⚠️",
+                "breakage": "🔴",
+                "emergence": "🟢"
+            }.get(shift.shift_type, "•")
+            
+            lines.append(f"- {emoji} **{shift.section}** ({shift.significance} significance): {shift.description}\n")
+        
+        lines.append(f"\n**Overall Stability Score**: {delta.overall_stability_score:.2f} (0.0=Chaotic, 1.0=Stable)\n")
+    
+    return "".join(lines)
+

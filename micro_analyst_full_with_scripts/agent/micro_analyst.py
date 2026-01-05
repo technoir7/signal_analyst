@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from core.data_models import CompanyOSINTProfile
 from core.inference import InferenceEngine, InferredProfile, SignalInference
-from core.change_detector import ChangeDetector
+from core.change_detector import ChangeDetector, delta_to_markdown
 from core.merge_profiles import (
     merge_web_data,
     merge_seo_data,
@@ -902,8 +902,8 @@ def analyze(req: AnalyzeRequest, api_key: str = Header(None, alias="X-API-Key"))
     inferred_profile = inference_engine.infer(raw_profile_dict)
     profile_dict = inferred_profile.model_dump()
     
-    # Change detection (optional)
-    delta_context = None
+    # Change detection (optional) - compute delta but inject AFTER synthesis
+    delta_report = None  # Will hold DeltaReport object if prior snapshot exists
     try:
         history = get_latest_reports(req.company_url, limit=1)
         if history:
@@ -917,12 +917,12 @@ def analyze(req: AnalyzeRequest, api_key: str = Header(None, alias="X-API-Key"))
                 current_date=datetime.utcnow(),
                 previous_date=prev_date
             )
-            delta_context = delta_report.model_dump()
     except Exception as e:
         logger.error(f"[Job {job_id}] Change detection failed: {e}")
     
+    # Synthesize report WITHOUT delta_context (avoid signature issues with Ollama client)
     try:
-        report_markdown = llm_client.synthesize_report(profile_dict, req.focus, delta_context=delta_context)
+        report_markdown = llm_client.synthesize_report(profile_dict, req.focus)
     except Exception as e:
         logger.error(f"[Job {job_id}] Synthesis LLM failed: {e}")
         safe_company_name = profile.company.get("name") if isinstance(profile.company, dict) else str(profile.company)
@@ -933,6 +933,9 @@ def analyze(req: AnalyzeRequest, api_key: str = Header(None, alias="X-API-Key"))
             "## 8. Strategic Recommendations\n\n"
             "Unable to generate recommendations due to synthesis failure."
         )
+    
+    # Append delta section AFTER synthesis (Time-Delta v1)
+    report_markdown += delta_to_markdown(delta_report)
     
     # Persist report if not in pytest
     if not _is_pytest_running():
